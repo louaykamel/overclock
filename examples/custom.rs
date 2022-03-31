@@ -92,16 +92,16 @@ impl ShutdownEvent for OverclockEvent {
         Self::Shutdown
     }
 }
-impl<T> ReportEvent<T> for OverclockEvent {
+
+impl<T> ServiceEvent<T> for OverclockEvent {
     fn report_event(scope_id: ScopeId, service: Service) -> Self {
         Self::Microservice(scope_id, service)
     }
-}
-impl<T> EolEvent<T> for OverclockEvent {
     fn eol_event(scope_id: ScopeId, service: Service, _actor: T, _r: ActorResult<()>) -> Self {
         Self::Microservice(scope_id, service)
     }
 }
+
 ///// All of these should be implemented using proc_macro or some macro end ///////
 
 #[async_trait::async_trait]
