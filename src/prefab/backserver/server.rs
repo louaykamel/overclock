@@ -1,23 +1,15 @@
+// Copyright 2021 IOTA Stiftung
+// Copyright 2022 Louay Kamel
+// SPDX-License-Identifier: Apache-2.0
+
 use super::BackserverEvent;
-use crate::core::{
-    ScopeId,
-    UnboundedHandle,
-    Scope,
-    Service,
-};
-use hyper::{
-    Body,
-    Request,
-    Response,
-};
+use crate::core::{Scope, ScopeId, Service, UnboundedHandle};
+use hyper::{Body, Request, Response};
 
 use std::{
     future::Future,
     pin::Pin,
-    task::{
-        Context,
-        Poll,
-    },
+    task::{Context, Poll},
 };
 
 pub(crate) struct ListenerSvc {
@@ -87,8 +79,8 @@ impl hyper::service::Service<Request<Body>> for ListenerSvc {
                         } else {
                             mk_response(format!("Service for scope_id: {}, not found", scope_id))
                         }
-                    })
-                },
+                    });
+                }
                 "/info" => mk_response(format!("overclock info, commit header, version and such.")),
                 "/readme" => mk_response(format!("todo return readme.md")),
                 "/docs" => mk_response(format!("todo return docs or redirect ot docs")),

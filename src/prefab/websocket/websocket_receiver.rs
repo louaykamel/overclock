@@ -1,12 +1,10 @@
-use super::{
-    Event,
-    *,
-};
+// Copyright 2021 IOTA Stiftung
+// Copyright 2022 Louay Kamel
+// SPDX-License-Identifier: Apache-2.0
+
+use super::{Event, *};
 use crate::core::*;
-use futures::stream::{
-    Stream,
-    StreamExt,
-};
+use futures::stream::{Stream, StreamExt};
 use tokio_tungstenite::tungstenite::Error as WsError;
 /// The websocket receiver actor, manages the Stream from the client
 pub struct WebsocketReceiver<T>

@@ -1,3 +1,7 @@
+// Copyright 2021 IOTA Stiftung
+// Copyright 2022 Louay Kamel
+// SPDX-License-Identifier: Apache-2.0
+
 /// Our hyper example STARTS from here
 use crate::core::*;
 
@@ -66,13 +70,13 @@ where
     type Channel = HyperChannel<T>;
     async fn init(&mut self, rt: &mut Rt<Self, S>) -> ActorResult<Self::Data> {
         let name: String = rt.service().directory().clone().unwrap_or_else(|| "hyper".into());
-        log::info!("{}: {}",name, rt.service().status());
+        log::info!("{}: {}", name, rt.service().status());
         Ok(name)
     }
     async fn run(&mut self, rt: &mut Rt<Self, S>, name: Self::Data) -> ActorResult<()> {
         log::info!("{}: {}", name, rt.service().status());
         if let Err(err) = rt.inbox_mut().ignite().await {
-            log::error!("{}: {}",name, err);
+            log::error!("{}: {}", name, err);
             return Err(ActorError::exit_msg(err));
         }
         log::info!("{} gracefully shutdown", name);

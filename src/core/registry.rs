@@ -1,3 +1,7 @@
+// Copyright 2021 IOTA Stiftung
+// Copyright 2022 Louay Kamel
+// SPDX-License-Identifier: Apache-2.0
+
 use super::{Route, Shutdown};
 use rand::distributions::Uniform;
 use std::{any::TypeId, collections::HashMap};
@@ -100,10 +104,7 @@ impl<T: Resource> Subscriber<T> {
         Self::LinkedCopy(Some(one_shot), shutdown_handle, hard_link)
     }
     /// Create subscriber for dynamic copies.
-    pub fn dyn_copy(
-        res_ref: super::ResourceRef,
-        boxed_route: Box<dyn Route<super::Event<T>>>,
-    ) -> Self {
+    pub fn dyn_copy(res_ref: super::ResourceRef, boxed_route: Box<dyn Route<super::Event<T>>>) -> Self {
         Self::DynCopy(res_ref, boxed_route)
     }
 }

@@ -1,7 +1,11 @@
+// Copyright 2021 IOTA Stiftung
+// Copyright 2022 Louay Kamel
+// SPDX-License-Identifier: Apache-2.0
+
 use super::{
-    AbortRegistration, Abortable, Actor, ActorError, ActorResult, Channel, ChannelBuilder, Cleanup,
-    CleanupData, Data, NullSupervisor, Resource, Route, Scope, ScopeId, Service, ServiceStatus,
-    Shutdown, Subscriber, SupHandle, OVERCLOCK_PARTITIONS, SCOPES, SCOPE_ID_RANGE, VISIBLE_DATA,
+    AbortRegistration, Abortable, Actor, ActorError, ActorResult, Channel, ChannelBuilder, Cleanup, CleanupData, Data,
+    NullSupervisor, Resource, Route, Scope, ScopeId, Service, ServiceStatus, Shutdown, Subscriber, SupHandle,
+    OVERCLOCK_PARTITIONS, SCOPES, SCOPE_ID_RANGE, VISIBLE_DATA,
 };
 #[cfg(feature = "config")]
 use crate::config::*;
@@ -37,8 +41,7 @@ pub struct Rt<A: Actor<S>, S: Send> {
     /// The actor's children handles
     pub(crate) children_handles: std::collections::HashMap<ScopeId, Box<dyn Shutdown>>,
     /// The actor's children joins
-    pub(crate) children_joins:
-        std::collections::HashMap<ScopeId, tokio::task::JoinHandle<ActorResult<()>>>,
+    pub(crate) children_joins: std::collections::HashMap<ScopeId, tokio::task::JoinHandle<ActorResult<()>>>,
     /// The actor abort_registration copy
     pub(crate) abort_registration: AbortRegistration,
     /// Registered prometheus metrics
@@ -47,19 +50,13 @@ pub struct Rt<A: Actor<S>, S: Send> {
     pub(crate) visible_data: std::collections::HashSet<std::any::TypeId>,
 }
 /// InitializedRx signal receiver
-pub struct InitializedRx(
-    ScopeId,
-    tokio::sync::oneshot::Receiver<ActorResult<Service>>,
-);
+pub struct InitializedRx(ScopeId, tokio::sync::oneshot::Receiver<ActorResult<Service>>);
 type InitSignalTx = tokio::sync::oneshot::Sender<ActorResult<Service>>;
 
 impl InitializedRx {
     /// Await till the actor get initialized
     pub async fn initialized(self) -> ActorResult<(ScopeId, Service)> {
-        let service = self
-            .1
-            .await
-            .expect("Expected functional CheckInit oneshot")?;
+        let service = self.1.await.expect("Expected functional CheckInit oneshot")?;
         Ok((self.0, service))
     }
 }
@@ -90,8 +87,7 @@ impl LocateScopeId {
     }
     /// Add child with the provided name to the directory path
     pub fn child<D: Into<String>>(mut self, dir_name: D) -> Self {
-        self.directory_path
-            .push_back(Direction::Child(dir_name.into()));
+        self.directory_path.push_back(Direction::Child(dir_name.into()));
         self
     }
     /// Add parent to the directory path
@@ -330,9 +326,7 @@ where
             drop(lock);
             break;
         }
-        self.service
-            .microservices
-            .insert(child_scope_id, service.clone());
+        self.service.microservices.insert(child_scope_id, service.clone());
         dir.as_ref().and_then(|dir| {
             self.service
                 .inactive
@@ -346,8 +340,7 @@ where
             drop(lock);
         }
         // add the child handle to the children_handles
-        self.children_handles
-            .insert(child_scope_id, Box::new(handle.clone()));
+        self.children_handles.insert(child_scope_id, Box::new(handle.clone()));
         // create supervisor handle
         let sup = self.handle.clone();
         // created visible data
@@ -368,9 +361,7 @@ where
             visible_data,
         );
         if let Some(metric) = metric.take() {
-            child_context
-                .register(metric)
-                .expect("Metric to be registered");
+            child_context.register(metric).expect("Metric to be registered");
         }
         let (tx_oneshot, rx_oneshot) = tokio::sync::oneshot::channel::<ActorResult<Service>>();
         // create child future;
@@ -398,10 +389,10 @@ where
     pub fn remove_microservice(&mut self, scope_id: ScopeId) {
         self.children_handles.remove(&scope_id);
         self.children_joins.remove(&scope_id);
-        self.service.microservices.remove(&scope_id).and_then(|ms| {
-            ms.directory
-                .and_then(|dir| self.service.inactive.remove(&dir))
-        });
+        self.service
+            .microservices
+            .remove(&scope_id)
+            .and_then(|ms| ms.directory.and_then(|dir| self.service.inactive.remove(&dir)));
     }
     /// Returns mutable reference to the actor's inbox
     pub fn inbox_mut(&mut self) -> &mut <A::Channel as Channel>::Inbox {
@@ -458,10 +449,7 @@ where
     }
     /// Check if microservices are stopped
     pub fn microservices_stopped(&self) -> bool {
-        self.service
-            .microservices
-            .iter()
-            .all(|(_, s)| s.is_stopped())
+        self.service.microservices.iter().all(|(_, s)| s.is_stopped())
     }
     /// Check if all microservices are _
     pub fn microservices_all(&self, are: fn(&Service) -> bool) -> bool {
@@ -518,18 +506,14 @@ where
     {
         let route: Box<dyn Route<T>> = Box::new(self.handle.clone());
         let mut lock = SCOPES[self.scopes_index].write().await;
-        let my_scope = lock
-            .get_mut(&self.scope_id)
-            .expect("expected self scope to exist");
+        let my_scope = lock.get_mut(&self.scope_id).expect("expected self scope to exist");
         my_scope.router.insert(route);
         Ok(())
     }
     /// Remove route of T
     pub async fn remove_route<T: Send + 'static>(&self) -> anyhow::Result<()> {
         let mut lock = SCOPES[self.scopes_index].write().await;
-        let my_scope = lock
-            .get_mut(&self.scope_id)
-            .expect("expected self scope to exist");
+        let my_scope = lock.get_mut(&self.scope_id).expect("expected self scope to exist");
         my_scope.router.remove::<Box<dyn Route<T>>>();
         Ok(())
     }
@@ -616,9 +600,7 @@ where
         }
         // drop scope
         let mut lock = SCOPES[self.scopes_index].write().await;
-        let mut my_scope = lock
-            .remove(&self.scope_id)
-            .expect("Self scope to exist on drop");
+        let mut my_scope = lock.remove(&self.scope_id).expect("Self scope to exist on drop");
         drop(lock);
         for (_type_id, cleanup_self) in my_scope.cleanup_data.drain() {
             cleanup_self
@@ -702,10 +684,7 @@ impl<A: Actor<S>, S: SupHandle<A>> Rt<A, S> {
         }
     }
     /// Register a metric
-    pub fn register<T: Collector + Clone + 'static>(
-        &mut self,
-        metric: T,
-    ) -> prometheus::Result<()> {
+    pub fn register<T: Collector + Clone + 'static>(&mut self, metric: T) -> prometheus::Result<()> {
         let r = super::registry::PROMETHEUS_REGISTRY.register(Box::new(metric.clone()));
         if r.is_ok() {
             self.registered_metrics.push(Box::new(metric))
@@ -816,8 +795,7 @@ impl<A: Actor<S>, S: SupHandle<A>> Rt<A, S> {
             let mut active_subscribers = HashMap::<ScopeId, Subscriber<T>>::new();
             // require further read locks
             let mut should_get_shutdown = Vec::<Box<dyn Shutdown>>::new();
-            let mut should_get_dyn_resource =
-                Vec::<(ScopeId, String, Box<dyn Route<Event<T>>>)>::new();
+            let mut should_get_dyn_resource = Vec::<(ScopeId, String, Box<dyn Route<Event<T>>>)>::new();
             // publish copy to existing subscriber(s)
             for (sub_scope_id, subscriber) in data.subscribers.drain() {
                 match subscriber {
@@ -828,10 +806,8 @@ impl<A: Actor<S>, S: SupHandle<A>> Rt<A, S> {
                         if let Some(one_sender) = one_sender_opt.take() {
                             one_sender.send(Ok(resource.clone())).ok();
                             // reinsert into our new subscribers
-                            active_subscribers.insert(
-                                sub_scope_id,
-                                Subscriber::LinkedCopy(None, shutdown_handle, hard_link),
-                            );
+                            active_subscribers
+                                .insert(sub_scope_id, Subscriber::LinkedCopy(None, shutdown_handle, hard_link));
                         } else {
                             // check if the resource already existed, which mean the actor already cloned a copy
                             if previous.is_some() && hard_link {
@@ -842,21 +818,14 @@ impl<A: Actor<S>, S: SupHandle<A>> Rt<A, S> {
                         };
                     }
                     Subscriber::DynCopy(resource_ref, route) => {
-                        let event =
-                            Event::Published(scope_id, resource_ref.clone(), resource.clone());
+                        let event = Event::Published(scope_id, resource_ref.clone(), resource.clone());
                         match route.try_send_msg(event).await {
                             Ok(Some(_)) => {
-                                should_get_dyn_resource.push((
-                                    sub_scope_id,
-                                    resource_ref.clone(),
-                                    route.clone(),
-                                ));
-                                active_subscribers
-                                    .insert(sub_scope_id, Subscriber::DynCopy(resource_ref, route));
+                                should_get_dyn_resource.push((sub_scope_id, resource_ref.clone(), route.clone()));
+                                active_subscribers.insert(sub_scope_id, Subscriber::DynCopy(resource_ref, route));
                             }
                             Ok(None) => {
-                                active_subscribers
-                                    .insert(sub_scope_id, Subscriber::DynCopy(resource_ref, route));
+                                active_subscribers.insert(sub_scope_id, Subscriber::DynCopy(resource_ref, route));
                                 log::debug!("Message published to subscriber: {}", sub_scope_id);
                             }
                             Err(e) => {
@@ -889,9 +858,7 @@ impl<A: Actor<S>, S: SupHandle<A>> Rt<A, S> {
             let cleanup_data = CleanupData::<T>::new();
             let type_id = std::any::TypeId::of::<T>();
             my_scope.data_and_subscribers.insert(data);
-            my_scope
-                .cleanup_data
-                .insert(type_id, Box::new(cleanup_data));
+            my_scope.cleanup_data.insert(type_id, Box::new(cleanup_data));
             drop(lock);
         };
     }
@@ -919,15 +886,11 @@ impl<A: Actor<S>, S: SupHandle<A>> Rt<A, S> {
                     // this happen when the actor drops a resource before it publishes it,
                     // it might happen because it had some critical dep that were required to create this resource.
                     Subscriber::OneCopy(one_sender) => {
-                        one_sender
-                            .send(Err(anyhow::Error::msg("Resource got dropped")))
-                            .ok();
+                        one_sender.send(Err(anyhow::Error::msg("Resource got dropped"))).ok();
                     }
                     Subscriber::LinkedCopy(mut one_sender_opt, shutdown_handle, _hard_link) => {
                         if let Some(one_sender) = one_sender_opt.take() {
-                            one_sender
-                                .send(Err(anyhow::Error::msg("Resource got dropped")))
-                                .ok();
+                            one_sender.send(Err(anyhow::Error::msg("Resource got dropped"))).ok();
                             should_get_shutdown.push(shutdown_handle);
                         } else {
                             should_get_shutdown.push(shutdown_handle);
@@ -950,10 +913,7 @@ impl<A: Actor<S>, S: SupHandle<A>> Rt<A, S> {
         resource
     }
     /// Depends on resource T, it will await/block till the resource is available
-    pub async fn depends_on<T: Resource>(
-        &self,
-        resource_scope_id: ScopeId,
-    ) -> anyhow::Result<T, anyhow::Error> {
+    pub async fn depends_on<T: Resource>(&self, resource_scope_id: ScopeId) -> anyhow::Result<T, anyhow::Error> {
         let my_scope_id = self.scope_id;
         let resource_scopes_index = resource_scope_id % *OVERCLOCK_PARTITIONS;
         let mut lock = SCOPES[resource_scopes_index].write().await;
@@ -980,9 +940,7 @@ impl<A: Actor<S>, S: SupHandle<A>> Rt<A, S> {
                 let data = Data::<T>::with_subscriber(my_scope_id, subscriber);
                 let cleanup_data = CleanupData::<T>::new();
                 let type_id = std::any::TypeId::of::<T>();
-                resource_scope
-                    .cleanup_data
-                    .insert(type_id, Box::new(cleanup_data));
+                resource_scope.cleanup_data.insert(type_id, Box::new(cleanup_data));
                 resource_scope.data_and_subscribers.insert(data);
                 drop(lock);
                 let abortable = Abortable::new(rx, self.abort_registration.clone());
@@ -1018,14 +976,12 @@ impl<A: Actor<S>, S: SupHandle<A>> Rt<A, S> {
                     drop(lock);
                     // the self actor might get shutdown before the resource provider,
                     // therefore we should cleanup self Subscriber::<T>::LinkedOneCopy from the provider
-                    self.add_cleanup_from_other_obj::<T>(resource_scope_id)
-                        .await;
+                    self.add_cleanup_from_other_obj::<T>(resource_scope_id).await;
                     Ok(resource)
                 } else {
                     let (tx, rx) = tokio::sync::oneshot::channel::<anyhow::Result<T>>();
                     let shutdown_handle = Box::new(self.handle.clone());
-                    let subscriber =
-                        Subscriber::<T>::LinkedCopy(Some(tx), shutdown_handle, hard_link);
+                    let subscriber = Subscriber::<T>::LinkedCopy(Some(tx), shutdown_handle, hard_link);
                     data.subscribers.insert(my_scope_id, subscriber);
                     drop(lock);
                     let abortable = Abortable::new(rx, self.abort_registration.clone());
@@ -1034,8 +990,7 @@ impl<A: Actor<S>, S: SupHandle<A>> Rt<A, S> {
                         if r.is_ok() {
                             // as mentioned above, this needed to cleanup the provider if the linked subscriber shutdown
                             // before the provider
-                            self.add_cleanup_from_other_obj::<T>(resource_scope_id)
-                                .await;
+                            self.add_cleanup_from_other_obj::<T>(resource_scope_id).await;
                         };
                         r
                     } else {
@@ -1050,16 +1005,13 @@ impl<A: Actor<S>, S: SupHandle<A>> Rt<A, S> {
                 let type_id = std::any::TypeId::of::<T>();
                 let data = Data::<T>::with_subscriber(my_scope_id, subscriber);
                 resource_scope.data_and_subscribers.insert(data);
-                resource_scope
-                    .cleanup_data
-                    .insert(type_id, Box::new(cleanup_data));
+                resource_scope.cleanup_data.insert(type_id, Box::new(cleanup_data));
                 drop(lock);
                 let abortable = Abortable::new(rx, self.abort_registration.clone());
                 if let Ok(r) = abortable.await {
                     let r = r?;
                     if r.is_ok() {
-                        self.add_cleanup_from_other_obj::<T>(resource_scope_id)
-                            .await;
+                        self.add_cleanup_from_other_obj::<T>(resource_scope_id).await;
                     };
                     r
                 } else {
@@ -1088,9 +1040,7 @@ impl<A: Actor<S>, S: SupHandle<A>> Rt<A, S> {
         my_scope.router.insert(route.clone());
         let cleanup = Cleanup::<T>::new(resource_scope_id);
         let type_id = std::any::TypeId::of::<T>();
-        my_scope
-            .cleanup
-            .insert((type_id, resource_scope_id), Box::new(cleanup));
+        my_scope.cleanup.insert((type_id, resource_scope_id), Box::new(cleanup));
         drop(lock);
         let resource_scopes_index = resource_scope_id % *OVERCLOCK_PARTITIONS;
         let mut lock = SCOPES[resource_scopes_index].write().await;
@@ -1112,9 +1062,7 @@ impl<A: Actor<S>, S: SupHandle<A>> Rt<A, S> {
                 let type_id = std::any::TypeId::of::<T>();
                 let data = Data::<T>::with_subscriber(my_scope_id, subscriber);
                 resource_scope.data_and_subscribers.insert(data);
-                resource_scope
-                    .cleanup_data
-                    .insert(type_id, Box::new(cleanup_data));
+                resource_scope.cleanup_data.insert(type_id, Box::new(cleanup_data));
                 drop(lock);
                 Ok(None)
             }
@@ -1132,9 +1080,7 @@ impl<A: Actor<S>, S: SupHandle<A>> Rt<A, S> {
         let type_id = std::any::TypeId::of::<T>();
         let mut lock = SCOPES[self.scopes_index].write().await;
         let my_scope = lock.get_mut(&self.scope_id).expect("Self scope to exist");
-        my_scope
-            .cleanup
-            .insert((type_id, resource_scope_id), Box::new(cleanup));
+        my_scope.cleanup.insert((type_id, resource_scope_id), Box::new(cleanup));
         drop(lock);
     }
 }
@@ -1157,11 +1103,7 @@ where
     #[cfg(feature = "config")]
     pub async fn from_config<A>() -> ActorResult<Self>
     where
-        A: 'static
-            + ChannelBuilder<<A as Actor<NullSupervisor>>::Channel>
-            + Actor<NullSupervisor>
-            + Send
-            + Sync,
+        A: 'static + ChannelBuilder<<A as Actor<NullSupervisor>>::Channel> + Actor<NullSupervisor> + Send + Sync,
         <A as Actor<NullSupervisor>>::Channel: Channel<Handle = H>,
         A: FileSystemConfig
             + DeserializeOwned
@@ -1183,8 +1125,7 @@ where
         console_subscriber::init();
 
         let root_dir: Option<String> = A::type_name().to_string().into();
-        let history = History::<HistoricalConfig<VersionedConfig<A>>>::load(20)
-            .map_err(|e| ActorError::exit(e))?;
+        let history = History::<HistoricalConfig<VersionedConfig<A>>>::load(20).map_err(|e| ActorError::exit(e))?;
         let child = history.latest().config;
         let runtime = Self::with_supervisor(root_dir, child, NullSupervisor).await?;
         Runtime::with_scope_id(3, "config".to_string(), history, NullSupervisor).await?;
@@ -1215,12 +1156,7 @@ where
         Self::with_scope_id(0, dir, child, supervisor).await
     }
     /// Create new runtime with provided supervisor handle
-    async fn with_scope_id<T, A, S>(
-        child_scope_id: ScopeId,
-        dir: T,
-        mut child: A,
-        supervisor: S,
-    ) -> ActorResult<Self>
+    async fn with_scope_id<T, A, S>(child_scope_id: ScopeId, dir: T, mut child: A, supervisor: S) -> ActorResult<Self>
     where
         A: 'static + ChannelBuilder<<A as Actor<S>>::Channel> + Actor<S>,
         T: Into<Option<String>>,
@@ -1267,9 +1203,7 @@ where
             visible_data,
         );
         if let Some(metric) = metric.take() {
-            child_context
-                .register(metric)
-                .expect("Metric to be registered");
+            child_context.register(metric).expect("Metric to be registered");
         }
         let (tx_oneshot, rx_oneshot) = tokio::sync::oneshot::channel::<ActorResult<Service>>();
         // create child future;
@@ -1306,14 +1240,9 @@ where
 
     #[cfg(feature = "websocket_server")]
     /// Enable the websocket server
-    pub async fn websocket_server(
-        mut self,
-        addr: std::net::SocketAddr,
-        mut ttl: Option<u32>,
-    ) -> ActorResult<Self>
+    pub async fn websocket_server(mut self, addr: std::net::SocketAddr, mut ttl: Option<u32>) -> ActorResult<Self>
     where
-        Websocket:
-            Actor<NullSupervisor> + ChannelBuilder<<Websocket as Actor<NullSupervisor>>::Channel>,
+        Websocket: Actor<NullSupervisor> + ChannelBuilder<<Websocket as Actor<NullSupervisor>>::Channel>,
         <Websocket as Actor<NullSupervisor>>::Channel: Channel,
     {
         let websocket_scope_id = 1;
@@ -1321,8 +1250,7 @@ where
         if let Some(ttl) = ttl.take() {
             websocket = websocket.set_ttl(ttl);
         }
-        let channel: <Websocket as Actor<NullSupervisor>>::Channel =
-            websocket.build_channel().await?;
+        let channel: <Websocket as Actor<NullSupervisor>>::Channel = websocket.build_channel().await?;
         let (handle, inbox, abort_registration, mut metric, mut route) =
             channel.channel::<Websocket>(websocket_scope_id);
         let shutdown_handle = Box::new(handle.clone());
@@ -1354,9 +1282,7 @@ where
             visible_data,
         );
         if let Some(metric) = metric.take() {
-            child_context
-                .register(metric)
-                .expect("Metric to be registered");
+            child_context.register(metric).expect("Metric to be registered");
         }
         let wrapped_fut = async move {
             let mut child = websocket;
@@ -1392,19 +1318,14 @@ where
     pub async fn backserver(mut self, addr: std::net::SocketAddr) -> ActorResult<Self>
     where
         crate::prefab::backserver::Backserver: Actor<NullSupervisor>
-            + ChannelBuilder<
-                <crate::prefab::backserver::Backserver as Actor<NullSupervisor>>::Channel,
-            >,
+            + ChannelBuilder<<crate::prefab::backserver::Backserver as Actor<NullSupervisor>>::Channel>,
         <Websocket as Actor<NullSupervisor>>::Channel: Channel,
     {
         use crate::prefab::backserver::Backserver;
         let server_scope_id = 1;
-        let mut websocket =
-            Backserver::new(addr.clone(), self.scope_id).link_to(Box::new(self.handle.clone()));
-        let channel: <Backserver as Actor<NullSupervisor>>::Channel =
-            websocket.build_channel().await?;
-        let (handle, inbox, abort_registration, mut metric, mut route) =
-            channel.channel::<Backserver>(server_scope_id);
+        let mut websocket = Backserver::new(addr.clone(), self.scope_id).link_to(Box::new(self.handle.clone()));
+        let channel: <Backserver as Actor<NullSupervisor>>::Channel = websocket.build_channel().await?;
+        let (handle, inbox, abort_registration, mut metric, mut route) = channel.channel::<Backserver>(server_scope_id);
         let shutdown_handle = Box::new(handle.clone());
         let scopes_index = server_scope_id % *OVERCLOCK_PARTITIONS;
         // create the service
@@ -1434,9 +1355,7 @@ where
             visible_data,
         );
         if let Some(metric) = metric.take() {
-            child_context
-                .register(metric)
-                .expect("Metric to be registered");
+            child_context.register(metric).expect("Metric to be registered");
         }
         let wrapped_fut = async move {
             let mut child = websocket;
@@ -1468,16 +1387,10 @@ where
     }
     /// Block on the runtime till it shutdown gracefully
     pub async fn block_on(mut self) -> ActorResult<()> {
-        let r = self
-            .join_handle
-            .await
-            .expect("to join the root actor successfully");
+        let r = self.join_handle.await.expect("to join the root actor successfully");
         if let Some(ws_server_handle) = self.server.take() {
             ws_server_handle.shutdown().await;
-            self.server_join_handle
-                .expect("websocket join handle")
-                .await
-                .ok();
+            self.server_join_handle.expect("websocket join handle").await.ok();
         }
         r
     }

@@ -1,6 +1,10 @@
+// Copyright 2021 IOTA Stiftung
+// Copyright 2022 Louay Kamel
+// SPDX-License-Identifier: Apache-2.0
+
 use overclock::core::{
-    AbortableUnboundedChannel, Actor, ActorResult, Rt, Runtime, ScopeId, Service, ServiceEvent,
-    Shutdown, StreamExt, SupHandle,
+    AbortableUnboundedChannel, Actor, ActorResult, Rt, Runtime, ScopeId, Service, ServiceEvent, Shutdown, StreamExt,
+    SupHandle,
 };
 use std::sync::{atomic::AtomicU32, Arc};
 
@@ -142,11 +146,7 @@ where
         rt.spawn(None, Launcher).await?;
         Ok(total_spawned_actors)
     }
-    async fn run(
-        &mut self,
-        rt: &mut Rt<Self, S>,
-        total_spawned_actors: Self::Data,
-    ) -> ActorResult<()> {
+    async fn run(&mut self, rt: &mut Rt<Self, S>, total_spawned_actors: Self::Data) -> ActorResult<()> {
         while let Some(event) = rt.inbox_mut().next().await {
             match event {
                 LauncherEvent::Microservice(scope_id, service) => {
@@ -177,9 +177,6 @@ async fn main() {
     env_logger::init();
     let start = std::time::SystemTime::now();
     let runtime = Runtime::new(None, Root).await.expect("Root to run");
-    runtime
-        .block_on()
-        .await
-        .expect("Root to gracefully shutdown");
+    runtime.block_on().await.expect("Root to gracefully shutdown");
     log::info!("Total time: {} ms", start.elapsed().unwrap().as_millis());
 }

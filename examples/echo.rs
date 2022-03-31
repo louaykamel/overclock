@@ -1,3 +1,7 @@
+// Copyright 2021 IOTA Stiftung
+// Copyright 2022 Louay Kamel
+// SPDX-License-Identifier: Apache-2.0
+
 use overclock::core::*;
 #[cfg(feature = "websocket_server")]
 use overclock::prefab::websocket::{GenericResponder, JsonMessage, Responder};
@@ -57,19 +61,15 @@ async fn main() {
         .await
         .expect("Websocket server to run");
     overclock::spawn_task("overclock websocket", ws_client());
-    runtime
-        .block_on()
-        .await
-        .expect("Runtime to shutdown gracefully");
+    runtime.block_on().await.expect("Runtime to shutdown gracefully");
 }
 
 async fn ws_client() {
     use futures::SinkExt;
     use overclock::prefab::websocket::*;
-    let (mut stream, _) =
-        tokio_tungstenite::connect_async(url::Url::parse("ws://127.0.0.1:9000/").unwrap())
-            .await
-            .unwrap();
+    let (mut stream, _) = tokio_tungstenite::connect_async(url::Url::parse("ws://127.0.0.1:9000/").unwrap())
+        .await
+        .unwrap();
     let actor_path = ActorPath::new();
     let request = Interface::new(actor_path.clone(), Event::Call("Call message".into()));
     stream.send(request.to_message()).await.unwrap();

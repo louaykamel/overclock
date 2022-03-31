@@ -1,3 +1,7 @@
+// Copyright 2021 IOTA Stiftung
+// Copyright 2022 Louay Kamel
+// SPDX-License-Identifier: Apache-2.0
+
 use super::{bail, file::*, persist::Persist, LoadableConfig, SerializableConfig};
 use serde::{de::DeserializeOwned, Deserialize, Deserializer, Serialize};
 use std::{
@@ -99,8 +103,7 @@ impl<C: FileSystemConfig + CurrentVersion> FileSystemConfig for VersionedConfig<
 }
 impl<C: CurrentVersion> DefaultFileSave for VersionedConfig<C> {}
 
-impl<C: FileSystemConfig + CurrentVersion + DeserializeOwned> TryFrom<VersionedValue<C>>
-    for VersionedConfig<C>
+impl<C: FileSystemConfig + CurrentVersion + DeserializeOwned> TryFrom<VersionedValue<C>> for VersionedConfig<C>
 where
     <C as FileSystemConfig>::ConfigType: ValueType,
     <<C as FileSystemConfig>::ConfigType as ValueType>::Value:
@@ -111,9 +114,7 @@ where
 {
     type Error = anyhow::Error;
 
-    fn try_from(
-        VersionedValue { version, config }: VersionedValue<C>,
-    ) -> anyhow::Result<VersionedConfig<C>> {
+    fn try_from(VersionedValue { version, config }: VersionedValue<C>) -> anyhow::Result<VersionedConfig<C>> {
         Ok(Self {
             version,
             config: C::deserialize(config).map_err(|e| anyhow::anyhow!(e))?,

@@ -1,3 +1,7 @@
+// Copyright 2021 IOTA Stiftung
+// Copyright 2022 Louay Kamel
+// SPDX-License-Identifier: Apache-2.0
+
 use overclock::core::*;
 
 ////////////////// Incrementer ///////////
@@ -56,18 +60,13 @@ where
         );
         // link to the atomic resource under the following scope_id
         if let Some(resource_scope_id) = rt.highest_scope_id::<Self::Data>().await {
-            let counter = rt
-                .link::<Self::Data>(resource_scope_id, true)
-                .await
-                .map_err(|e| {
-                    log::error!("{:?}", e);
-                    ActorError::exit_msg(e)
-                })?;
+            let counter = rt.link::<Self::Data>(resource_scope_id, true).await.map_err(|e| {
+                log::error!("{:?}", e);
+                ActorError::exit_msg(e)
+            })?;
             Ok(counter)
         } else {
-            Err(ActorError::exit_msg(
-                "Unable to find scope for Arc<AtomicIsize> data",
-            ))
+            Err(ActorError::exit_msg("Unable to find scope for Arc<AtomicIsize> data"))
         }
     }
     async fn run(&mut self, rt: &mut Rt<Self, S>, counter: Self::Data) -> ActorResult<()> {
@@ -118,24 +117,19 @@ where
         // - build Incrementer
         let incrementer = Incrementer;
         // spawn incrementer
-        let (_h, i) = rt
-            .spawn(Some("incrementer".into()), incrementer)
-            .await
-            .map_err(|e| {
-                log::error!("{:?}", e);
-                ActorError::exit_msg(format!("{:?}", e))
-            })?;
+        let (_h, i) = rt.spawn(Some("incrementer".into()), incrementer).await.map_err(|e| {
+            log::error!("{:?}", e);
+            ActorError::exit_msg(format!("{:?}", e))
+        })?;
         // await incrementer till it gets initialized
         i.initialized().await?;
         // - build Decrementer
         let decrementer = Decrementer;
         // spawn decrementer
-        rt.spawn(Some("decrementer".into()), decrementer)
-            .await
-            .map_err(|e| {
-                log::error!("{:?}", e);
-                ActorError::exit_msg(format!("{:?}", e))
-            })?;
+        rt.spawn(Some("decrementer".into()), decrementer).await.map_err(|e| {
+            log::error!("{:?}", e);
+            ActorError::exit_msg(format!("{:?}", e))
+        })?;
         Ok(())
     }
     async fn run(&mut self, rt: &mut Rt<Self, S>, _deps: Self::Data) -> ActorResult<()> {
@@ -184,8 +178,5 @@ async fn main() {
         .websocket_server(websocket_server_addr, None)
         .await
         .expect("Websocket server to run");
-    runtime
-        .block_on()
-        .await
-        .expect("Runtime to shutdown gracefully");
+    runtime.block_on().await.expect("Runtime to shutdown gracefully");
 }

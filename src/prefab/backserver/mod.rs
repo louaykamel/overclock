@@ -1,10 +1,11 @@
+// Copyright 2021 IOTA Stiftung
+// Copyright 2022 Louay Kamel
+// SPDX-License-Identifier: Apache-2.0
+
 /// hyper server as make service;
 mod server;
 
-use super::websocket::{
-    WebsocketReceiver,
-    WebsocketSender,
-};
+use super::websocket::{WebsocketReceiver, WebsocketSender};
 use crate::core::*;
 use hyper_tungstenite::HyperWebsocket;
 
@@ -51,7 +52,6 @@ impl<T> ServiceEvent<T> for BackserverEvent {
         Self::Microservice(scope_id, service, None)
     }
 }
-
 
 impl ShutdownEvent for BackserverEvent {
     fn shutdown_event() -> Self {

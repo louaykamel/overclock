@@ -1,3 +1,7 @@
+// Copyright 2021 IOTA Stiftung
+// Copyright 2022 Louay Kamel
+// SPDX-License-Identifier: Apache-2.0
+
 //// Based on hyper hello example https://github.com/hyperium/hyper/blob/master/examples/hello.rs
 use std::convert::Infallible;
 
@@ -24,11 +28,6 @@ async fn main() {
     let make_svc = make_service_fn(|_conn| async { Ok::<_, Infallible>(service_fn(hello)) });
     let addr = ([127, 0, 0, 1], 3000).into();
     let hyper = Hyper::new(addr, make_svc);
-    let runtime = Runtime::new("hyper".to_string(), hyper)
-        .await
-        .expect("Runtime to run");
-    runtime
-        .block_on()
-        .await
-        .expect("Runtime to shutdown gracefully");
+    let runtime = Runtime::new("hyper".to_string(), hyper).await.expect("Runtime to run");
+    runtime.block_on().await.expect("Runtime to shutdown gracefully");
 }

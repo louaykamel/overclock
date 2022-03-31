@@ -1,3 +1,7 @@
+// Copyright 2021 IOTA Stiftung
+// Copyright 2022 Louay Kamel
+// SPDX-License-Identifier: Apache-2.0
+
 #![warn(missing_docs)]
 //! Config definitions for overclock use
 
@@ -30,14 +34,7 @@ pub use persist::Persist;
 pub mod versioned;
 pub use versioned::*;
 
-#[cfg(all(
-    test,
-    any(
-        feature = "ron_config",
-        feature = "json_config",
-        feature = "toml_config"
-    )
-))]
+#[cfg(all(test, any(feature = "ron_config", feature = "json_config", feature = "toml_config")))]
 mod test;
 
 /// The default config file name

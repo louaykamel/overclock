@@ -1,3 +1,7 @@
+// Copyright 2021 IOTA Stiftung
+// Copyright 2022 Louay Kamel
+// SPDX-License-Identifier: Apache-2.0
+
 use super::*;
 
 /// Configuration type which defines how configuration files are serialized and deserialized
@@ -84,11 +88,7 @@ pub trait FileSystemConfig {
     fn read_file() -> anyhow::Result<File> {
         OpenOptions::new()
             .read(true)
-            .open(Self::dir().join(format!(
-                "{}.{}",
-                Self::FILENAME,
-                Self::ConfigType::extension()
-            )))
+            .open(Self::dir().join(format!("{}.{}", Self::FILENAME, Self::ConfigType::extension())))
             .map_err(|e| anyhow!(e))
     }
 
@@ -97,11 +97,7 @@ pub trait FileSystemConfig {
         OpenOptions::new()
             .create(true)
             .write(true)
-            .open(Self::dir().join(format!(
-                "{}.{}",
-                Self::FILENAME,
-                Self::ConfigType::extension()
-            )))
+            .open(Self::dir().join(format!("{}.{}", Self::FILENAME, Self::ConfigType::extension())))
             .map_err(|e| anyhow!(e))
     }
 }

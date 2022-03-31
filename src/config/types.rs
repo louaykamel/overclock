@@ -1,3 +1,7 @@
+// Copyright 2021 IOTA Stiftung
+// Copyright 2022 Louay Kamel
+// SPDX-License-Identifier: Apache-2.0
+
 use super::{file::*, *};
 
 #[cfg(feature = "ron_config")]
@@ -11,8 +15,7 @@ impl ConfigFileType for RONConfig {
     }
 
     fn serialize<C: Serialize, W: Write>(config: &C, writer: &mut W) -> anyhow::Result<()> {
-        ron::ser::to_writer_pretty(writer, config, ron::ser::PrettyConfig::default())
-            .map_err(|e| anyhow!(e))
+        ron::ser::to_writer_pretty(writer, config, ron::ser::PrettyConfig::default()).map_err(|e| anyhow!(e))
     }
 
     fn deserialize<C: DeserializeOwned, R: Read>(reader: &mut R) -> anyhow::Result<C> {

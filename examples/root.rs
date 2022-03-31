@@ -1,3 +1,7 @@
+// Copyright 2021 IOTA Stiftung
+// Copyright 2022 Louay Kamel
+// SPDX-License-Identifier: Apache-2.0
+
 use overclock::core::*;
 
 #[derive(Debug, Serialize, Deserialize, PartialEq, Eq, Default, Clone)]
@@ -34,11 +38,6 @@ async fn main() {
         let env = env_logger::Env::new().filter_or("RUST_LOG", "info");
         env_logger::Builder::from_env(env).init();
     }
-    let runtime = Runtime::from_config::<Root>()
-        .await
-        .expect("Runtime to run");
-    runtime
-        .block_on()
-        .await
-        .expect("Runtime to shutdown gracefully");
+    let runtime = Runtime::from_config::<Root>().await.expect("Runtime to run");
+    runtime.block_on().await.expect("Runtime to shutdown gracefully");
 }

@@ -1,3 +1,7 @@
+// Copyright 2021 IOTA Stiftung
+// Copyright 2022 Louay Kamel
+// SPDX-License-Identifier: Apache-2.0
+
 use super::*;
 use async_trait::async_trait;
 use core::pin::Pin;
@@ -10,9 +14,7 @@ use pin_project_lite::pin_project;
 use prometheus::core::Collector;
 use std::sync::atomic::{AtomicBool, Ordering};
 pub use tokio::net::TcpListener;
-use tokio::sync::mpsc::{
-    error::TrySendError, Receiver, Sender, UnboundedReceiver, UnboundedSender,
-};
+use tokio::sync::mpsc::{error::TrySendError, Receiver, Sender, UnboundedReceiver, UnboundedSender};
 use tokio_stream::wrappers::IntervalStream;
 pub use tokio_stream::wrappers::TcpListenerStream;
 
@@ -43,12 +45,7 @@ impl AbortHandle {
             aborted: AtomicBool::new(false),
         });
 
-        (
-            AbortHandle {
-                inner: inner.clone(),
-            },
-            AbortRegistration { inner },
-        )
+        (AbortHandle { inner: inner.clone() }, AbortRegistration { inner })
     }
 }
 
@@ -97,10 +94,7 @@ impl<T> std::convert::AsMut<T> for Abortable<T> {
 impl<T> Abortable<T> {
     /// Create new abortable future/stream
     pub fn new(task: T, reg: AbortRegistration) -> Self {
-        Self {
-            task,
-            inner: reg.inner,
-        }
+        Self { task, inner: reg.inner }
     }
     /// Check if the abortable got aborted
     pub fn is_aborted(&self) -> bool {
@@ -187,11 +181,7 @@ impl<R> tokio::io::AsyncWrite for Abortable<R>
 where
     R: tokio::io::AsyncWrite,
 {
-    fn poll_write(
-        self: Pin<&mut Self>,
-        cx: &mut Context<'_>,
-        buf: &[u8],
-    ) -> Poll<std::io::Result<usize>> {
+    fn poll_write(self: Pin<&mut Self>, cx: &mut Context<'_>, buf: &[u8]) -> Poll<std::io::Result<usize>> {
         let r = self.try_poll(cx, |inner_fut, cx| inner_fut.poll_write(cx, buf));
         match r {
             Poll::Ready(outer_res) => match outer_res {
@@ -413,13 +403,7 @@ impl<A: Send + 'static, T: ServiceEvent<A>> SupHandle<A> for UnboundedHandle<T> 
     async fn report(&self, scope_id: ScopeId, data: Service) -> Option<()> {
         self.send(T::report_event(scope_id, data)).ok()
     }
-    async fn eol(
-        self,
-        scope_id: super::ScopeId,
-        service: Service,
-        actor: A,
-        r: ActorResult<()>,
-    ) -> Option<()> {
+    async fn eol(self, scope_id: super::ScopeId, service: Service, actor: A, r: ActorResult<()>) -> Option<()> {
         self.send(T::eol_event(scope_id, service, actor, r)).ok()
     }
 }
@@ -548,13 +532,7 @@ impl<A: Send + 'static, T: ServiceEvent<A>> SupHandle<A> for AbortableUnboundedH
     async fn report(&self, scope_id: ScopeId, service: Service) -> Option<()> {
         self.send(T::report_event(scope_id, service)).ok()
     }
-    async fn eol(
-        self,
-        scope_id: super::ScopeId,
-        service: Service,
-        actor: A,
-        r: super::ActorResult<()>,
-    ) -> Option<()> {
+    async fn eol(self, scope_id: super::ScopeId, service: Service, actor: A, r: super::ActorResult<()>) -> Option<()> {
         self.send(T::eol_event(scope_id, service, actor, r)).ok()
     }
 }
@@ -681,8 +659,7 @@ impl<E: Send + 'static> Channel for AbortableUnboundedChannel<E> {
         let unbounded_handle = UnboundedHandle::new(sender, gauge.clone(), abort_handle, scope_id);
         let unbounded_inbox = UnboundedInbox::new(recv, gauge.clone());
         let abortable_unbounded_handle = AbortableUnboundedHandle::new(unbounded_handle);
-        let abortable_unbounded_inbox =
-            AbortableUnboundedInbox::new(unbounded_inbox, abort_registration.clone());
+        let abortable_unbounded_inbox = AbortableUnboundedInbox::new(unbounded_inbox, abort_registration.clone());
         let route = Box::new(abortable_unbounded_handle.clone());
         (
             abortable_unbounded_handle,
@@ -786,12 +763,7 @@ impl<T> Clone for BoundedHandle<T> {
 
 impl<T> BoundedHandle<T> {
     /// Create new bounded handle
-    pub fn new(
-        sender: Sender<T>,
-        gauge: prometheus::IntGauge,
-        abort_handle: AbortHandle,
-        scope_id: ScopeId,
-    ) -> Self {
+    pub fn new(sender: Sender<T>, gauge: prometheus::IntGauge, abort_handle: AbortHandle, scope_id: ScopeId) -> Self {
         Self {
             scope_id,
             abort_handle,
@@ -875,16 +847,8 @@ impl<A: Send + 'static, T: ServiceEvent<A>> SupHandle<A> for AbortableBoundedHan
     async fn report(&self, scope_id: ScopeId, service: Service) -> Option<()> {
         self.send(T::report_event(scope_id, service)).await.ok()
     }
-    async fn eol(
-        self,
-        scope_id: super::ScopeId,
-        service: Service,
-        actor: A,
-        r: ActorResult<()>,
-    ) -> Option<()> {
-        self.send(T::eol_event(scope_id, service, actor, r))
-            .await
-            .ok()
+    async fn eol(self, scope_id: super::ScopeId, service: Service, actor: A, r: ActorResult<()>) -> Option<()> {
+        self.send(T::eol_event(scope_id, service, actor, r)).await.ok()
     }
 }
 
@@ -987,9 +951,7 @@ where
     }
     async fn send_msg(&self, message: M) -> anyhow::Result<()> {
         if let Ok(event) = E::try_from(message) {
-            self.send(event)
-                .await
-                .map_err(|e| anyhow::Error::msg(format!("{}", e)))
+            self.send(event).await.map_err(|e| anyhow::Error::msg(format!("{}", e)))
         } else {
             anyhow::bail!("Unabled to convert the provided message into event type")
         }
@@ -1137,8 +1099,7 @@ impl<E: Send + 'static, const C: usize> Channel for AbortableBoundedChannel<E, C
         let unbounded_handle = BoundedHandle::new(sender, gauge.clone(), abort_handle, scope_id);
         let unbounded_inbox = BoundedInbox::new(recv, gauge.clone());
         let abortable_unbounded_handle = AbortableBoundedHandle::new(unbounded_handle);
-        let abortable_unbounded_inbox =
-            AbortableBoundedInbox::new(unbounded_inbox, abort_registration.clone());
+        let abortable_unbounded_inbox = AbortableBoundedInbox::new(unbounded_inbox, abort_registration.clone());
         let route = Box::new(abortable_unbounded_handle.clone());
         (
             abortable_unbounded_handle,
@@ -1172,9 +1133,7 @@ where
     async fn send_msg(&self, message: M) -> anyhow::Result<()> {
         // it's safe to send the message without causing deadlock
         if let Ok(event) = E::try_from(message) {
-            self.send(event)
-                .await
-                .map_err(|e| anyhow::Error::msg(format!("{}", e)))
+            self.send(event).await.map_err(|e| anyhow::Error::msg(format!("{}", e)))
         } else {
             anyhow::bail!("Unabled to convert the provided message into event type")
         }
@@ -1211,13 +1170,7 @@ impl Channel for TcpListenerStream {
         let (abort_handle, abort_registration) = AbortHandle::new_pair();
         let abortable_inbox = Abortable::new(self, abort_registration.clone());
         let abortable_handle = TcpListenerHandle(abort_handle, scope_id);
-        (
-            abortable_handle,
-            abortable_inbox,
-            abort_registration,
-            None,
-            None,
-        )
+        (abortable_handle, abortable_inbox, abort_registration, None, None)
     }
 }
 
@@ -1240,8 +1193,7 @@ mod hyper_channels {
     use ::hyper::{server::conn::AddrStream, Body, Request, Response};
     impl<S, E, R, F> Channel for HyperChannel<S>
     where
-        for<'a> S:
-            ::hyper::service::Service<&'a AddrStream, Error = E, Response = R, Future = F> + Send,
+        for<'a> S: ::hyper::service::Service<&'a AddrStream, Error = E, Response = R, Future = F> + Send,
         E: std::error::Error + Send + Sync + 'static,
         S: Send + 'static + Sync,
         F: Send + std::future::Future<Output = Result<R, E>> + 'static,
@@ -1285,10 +1237,7 @@ mod hyper_channels {
     impl HyperHandle {
         /// Create new Hyper channel's handle
         pub fn new(abort_handle: AbortHandle, scope_id: ScopeId) -> Self {
-            Self {
-                abort_handle,
-                scope_id,
-            }
+            Self { abort_handle, scope_id }
         }
     }
 
@@ -1305,14 +1254,7 @@ mod hyper_channels {
     /// Hyper channel's inbox, used to ignite hyper server inside the actor run loop
     pub struct HyperInbox {
         pined_graceful: Option<
-            Pin<
-                Box<
-                    dyn futures::Future<Output = Result<(), ::hyper::Error>>
-                        + std::marker::Send
-                        + Sync
-                        + 'static,
-                >,
-            >,
+            Pin<Box<dyn futures::Future<Output = Result<(), ::hyper::Error>> + std::marker::Send + Sync + 'static>>,
         >,
     }
     impl HyperInbox {
@@ -1328,12 +1270,7 @@ mod hyper_channels {
         /// Create new hyper inbox
         pub fn new(
             pined_graceful: Pin<
-                Box<
-                    dyn futures::Future<Output = Result<(), ::hyper::Error>>
-                        + std::marker::Send
-                        + Sync
-                        + 'static,
-                >,
+                Box<dyn futures::Future<Output = Result<(), ::hyper::Error>> + std::marker::Send + Sync + 'static>,
             >,
         ) -> Self {
             Self {
@@ -1362,10 +1299,7 @@ pub struct IntervalHandle {
 impl IntervalHandle {
     /// Create new interval handle
     pub fn new(abort_handle: AbortHandle, scope_id: ScopeId) -> Self {
-        Self {
-            scope_id,
-            abort_handle,
-        }
+        Self { scope_id, abort_handle }
     }
 }
 
@@ -1397,15 +1331,8 @@ impl<const I: u64> Channel for IntervalChannel<I> {
         let (abort_handle, abort_registration) = AbortHandle::new_pair();
         let interval = tokio::time::interval(std::time::Duration::from_millis(I));
         let interval_handle = IntervalHandle::new(abort_handle, scope_id);
-        let abortable_inbox =
-            Abortable::new(IntervalStream::new(interval), abort_registration.clone());
-        (
-            interval_handle,
-            abortable_inbox,
-            abort_registration,
-            None,
-            None,
-        )
+        let abortable_inbox = Abortable::new(IntervalStream::new(interval), abort_registration.clone());
+        (interval_handle, abortable_inbox, abort_registration, None, None)
     }
 }
 
@@ -1427,15 +1354,8 @@ impl Channel for std::time::Duration {
         let (abort_handle, abort_registration) = AbortHandle::new_pair();
         let interval = tokio::time::interval(self);
         let interval_handle = IntervalHandle::new(abort_handle, scope_id);
-        let abortable_inbox =
-            Abortable::new(IntervalStream::new(interval), abort_registration.clone());
-        (
-            interval_handle,
-            abortable_inbox,
-            abort_registration,
-            None,
-            None,
-        )
+        let abortable_inbox = Abortable::new(IntervalStream::new(interval), abort_registration.clone());
+        (interval_handle, abortable_inbox, abort_registration, None, None)
     }
 }
 
@@ -1474,10 +1394,7 @@ pub struct NullHandle {
 impl NullHandle {
     /// Create new null handle
     pub fn new(scope_id: ScopeId, abort_handle: AbortHandle) -> Self {
-        Self {
-            scope_id,
-            abort_handle,
-        }
+        Self { scope_id, abort_handle }
     }
 }
 
@@ -1559,13 +1476,7 @@ where
         let (abort_handle, abort_registration) = AbortHandle::new_pair();
         let abortable_inbox = Abortable::new(self.0, abort_registration.clone());
         let abortable_handle = IoHandle::new(abort_handle, scope_id);
-        (
-            abortable_handle,
-            abortable_inbox,
-            abort_registration,
-            None,
-            None,
-        )
+        (abortable_handle, abortable_inbox, abort_registration, None, None)
     }
 }
 
@@ -1696,11 +1607,7 @@ mod rocket_channels {
 
     impl RocketHandle {
         /// Create new Rocket channel's handle
-        pub fn new(
-            rocket_shutdown: ::rocket::Shutdown,
-            abort_handle: AbortHandle,
-            scope_id: ScopeId,
-        ) -> Self {
+        pub fn new(rocket_shutdown: ::rocket::Shutdown, abort_handle: AbortHandle, scope_id: ScopeId) -> Self {
             Self {
                 abort_handle,
                 rocket_shutdown,
@@ -1728,9 +1635,7 @@ mod rocket_channels {
     impl RocketInbox {
         /// Create new Rocket channel's inbox
         pub fn new(server: ::rocket::Rocket<::rocket::Ignite>) -> Self {
-            Self {
-                server: Some(server),
-            }
+            Self { server: Some(server) }
         }
         /// Returns rocket server (if any)
         pub fn rocket(&mut self) -> Option<::rocket::Rocket<::rocket::Ignite>> {
@@ -1756,10 +1661,7 @@ mod paho_mqtt_channels {
     impl MqttChannel {
         /// Create new channel from a connected async_client, and existing stream
         pub fn new(async_client: AsyncClient, stream: AsyncReceiver<Option<Message>>) -> Self {
-            Self {
-                async_client,
-                stream,
-            }
+            Self { async_client, stream }
         }
     }
     impl Channel for MqttChannel {
@@ -1794,10 +1696,7 @@ mod paho_mqtt_channels {
     impl MqttHandle {
         /// Create new Mqtt channel's handle
         pub fn new(abort_handle: AbortHandle, scope_id: ScopeId) -> Self {
-            Self {
-                abort_handle,
-                scope_id,
-            }
+            Self { abort_handle, scope_id }
         }
     }
 
@@ -1837,26 +1736,17 @@ mod paho_mqtt_channels {
             &mut self,
             duration: D,
         ) -> ActorResult<::paho_mqtt::Result<::paho_mqtt::ServerResponse>> {
-            Abortable::new(
-                tokio::time::sleep(duration.into()),
-                self.abort_registration.clone(),
-            )
-            .await
-            .map_err(|e| {
-                ActorError::aborted_msg(format!("mqtt aborted while reconnecting: {}", e))
-            })?;
+            Abortable::new(tokio::time::sleep(duration.into()), self.abort_registration.clone())
+                .await
+                .map_err(|e| ActorError::aborted_msg(format!("mqtt aborted while reconnecting: {}", e)))?;
             self.reconnect().await
         }
         /// Reconnect mqtt
-        pub async fn reconnect(
-            &mut self,
-        ) -> ActorResult<::paho_mqtt::Result<::paho_mqtt::ServerResponse>> {
+        pub async fn reconnect(&mut self) -> ActorResult<::paho_mqtt::Result<::paho_mqtt::ServerResponse>> {
             let reconnect_fut = async { self.async_client.reconnect().await };
             Abortable::new(reconnect_fut, self.abort_registration.clone())
                 .await
-                .map_err(|e| {
-                    ActorError::aborted_msg(format!("mqtt aborted while reconnecting: {}", e))
-                })
+                .map_err(|e| ActorError::aborted_msg(format!("mqtt aborted while reconnecting: {}", e)))
         }
         /// subscribe to the provided topic
         pub async fn subscribe<S>(
@@ -1870,9 +1760,7 @@ mod paho_mqtt_channels {
             let subscribe_fut = async { self.async_client.subscribe(topic, qos).await };
             Abortable::new(subscribe_fut, self.abort_registration.clone())
                 .await
-                .map_err(|e| {
-                    ActorError::aborted_msg(format!("mqtt aborted while subscribing: {}", e))
-                })
+                .map_err(|e| ActorError::aborted_msg(format!("mqtt aborted while subscribing: {}", e)))
         }
         /// Return the stream
         pub fn stream(&mut self) -> &mut Abortable<AsyncReceiver<Option<Message>>> {

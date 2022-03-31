@@ -1,3 +1,7 @@
+// Copyright 2021 IOTA Stiftung
+// Copyright 2022 Louay Kamel
+// SPDX-License-Identifier: Apache-2.0
+
 use super::{file::FileSystemConfig, *};
 
 /// Specifies that the implementor should be able to persist itself
@@ -14,8 +18,8 @@ where
     guard: tokio::sync::RwLockWriteGuard<'a, History<HistoricalConfig<C>>>,
 }
 
-impl<'a, C: Config + Persist + FileSystemConfig>
-    From<tokio::sync::RwLockWriteGuard<'a, History<HistoricalConfig<C>>>> for PersistHandle<'a, C>
+impl<'a, C: Config + Persist + FileSystemConfig> From<tokio::sync::RwLockWriteGuard<'a, History<HistoricalConfig<C>>>>
+    for PersistHandle<'a, C>
 where
     HistoricalConfig<C>: FileSystemConfig,
 {

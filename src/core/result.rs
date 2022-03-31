@@ -1,3 +1,7 @@
+// Copyright 2021 IOTA Stiftung
+// Copyright 2022 Louay Kamel
+// SPDX-License-Identifier: Apache-2.0
+
 use std::{fmt, time::Duration};
 use thiserror::Error;
 
@@ -63,10 +67,7 @@ impl<T> ActorResultExt for anyhow::Result<T> {
 
 impl From<anyhow::Error> for ActorError {
     fn from(source: anyhow::Error) -> Self {
-        Self {
-            source,
-            request: None,
-        }
+        Self { source, request: None }
     }
 }
 

@@ -1,9 +1,10 @@
+// Copyright 2021 IOTA Stiftung
+// Copyright 2022 Louay Kamel
+// SPDX-License-Identifier: Apache-2.0
+
 use super::*;
 use crate::core::*;
-use futures::{
-    sink::Sink,
-    SinkExt,
-};
+use futures::{sink::Sink, SinkExt};
 /// The websocket sender actor, manages the sink half of the client.
 pub struct WebsocketSender<T>
 where

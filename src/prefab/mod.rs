@@ -1,4 +1,7 @@
-// pub mod one_for_one;+
+// Copyright 2021 IOTA Stiftung
+// Copyright 2022 Louay Kamel
+// SPDX-License-Identifier: Apache-2.0
+
 #[cfg(feature = "backserver")]
 /// Backserver provides websocket, http and prometheus server
 pub mod backserver;

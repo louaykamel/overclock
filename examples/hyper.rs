@@ -1,3 +1,7 @@
+// Copyright 2021 IOTA Stiftung
+// Copyright 2022 Louay Kamel
+// SPDX-License-Identifier: Apache-2.0
+
 ///////////////// Forked from hyper example START //////
 /// https://github.com/hyperium/hyper/blob/master/examples/service_struct_impl.rs
 #[cfg(feature = "hyper")]
@@ -32,10 +36,7 @@ impl hyper::service::Service<Request<Body>> for Svc {
         let res = match req.uri().path() {
             "/" => mk_response(format!("home! counter = {:?}", self.counter)),
             "/posts" => mk_response(format!("posts, of course! counter = {:?}", self.counter)),
-            "/authors" => mk_response(format!(
-                "authors extraordinare! counter = {:?}",
-                self.counter
-            )),
+            "/authors" => mk_response(format!("authors extraordinare! counter = {:?}", self.counter)),
             // Return the 404 Not Found for other routes, and don't increment counter.
             _ => return Box::pin(async { mk_response("oh no! not found".into()) }),
         };
@@ -125,11 +126,6 @@ async fn main() {
     }
     let addr = ([127, 0, 0, 1], 3000).into();
     let hyper = Hyper::new(addr);
-    let runtime = Runtime::new("hyper".to_string(), hyper)
-        .await
-        .expect("Runtime to run");
-    runtime
-        .block_on()
-        .await
-        .expect("Runtime to shutdown gracefully");
+    let runtime = Runtime::new("hyper".to_string(), hyper).await.expect("Runtime to run");
+    runtime.block_on().await.expect("Runtime to shutdown gracefully");
 }

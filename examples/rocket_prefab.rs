@@ -1,3 +1,7 @@
+// Copyright 2021 IOTA Stiftung
+// Copyright 2022 Louay Kamel
+// SPDX-License-Identifier: Apache-2.0
+
 #[cfg(feature = "rocket")]
 use overclock::prefab::rocket::*;
 #[cfg(feature = "rocket")]
@@ -29,15 +33,10 @@ async fn main() {
         let env = env_logger::Env::new().filter_or("RUST_LOG", "info");
         env_logger::Builder::from_env(env).init();
     }
-    let user_defined_rocket = construct_rocket()
-        .await
-        .expect("user defined rocket to be constructed");
+    let user_defined_rocket = construct_rocket().await.expect("user defined rocket to be constructed");
     let rocket = RocketServer::new(user_defined_rocket);
     let runtime = Runtime::new("rocket".to_string(), rocket)
         .await
         .expect("Runtime to run");
-    runtime
-        .block_on()
-        .await
-        .expect("runtime to gracefuly shutdown")
+    runtime.block_on().await.expect("runtime to gracefuly shutdown")
 }

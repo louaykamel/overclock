@@ -1,35 +1,16 @@
+// Copyright 2021 IOTA Stiftung
+// Copyright 2022 Louay Kamel
+// SPDX-License-Identifier: Apache-2.0
+
 use std::time::SystemTime;
 
-use crate::{
-    core::{
-        Actor,
-        ActorError,
-        ActorResult,
-        ChannelBuilder,
-        Rt,
-        SupHandle,
-    },
-};
+use crate::core::{Actor, ActorError, ActorResult, ChannelBuilder, Rt, SupHandle};
 use async_trait::async_trait;
-use prometheus::{
-    HistogramOpts,
-    HistogramVec,
-    IntCounter,
-    IntCounterVec,
-    Opts,
-};
+use prometheus::{HistogramOpts, HistogramVec, IntCounter, IntCounterVec, Opts};
 use rocket::{
     catch,
-    fairing::{
-        Fairing,
-        Info,
-        Kind,
-    },
-    Data,
-    Ignite,
-    Request,
-    Response,
-    Rocket,
+    fairing::{Fairing, Info, Kind},
+    Data, Ignite, Request, Response, Rocket,
 };
 
 /// Rocket server

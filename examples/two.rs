@@ -1,3 +1,7 @@
+// Copyright 2021 IOTA Stiftung
+// Copyright 2022 Louay Kamel
+// SPDX-License-Identifier: Apache-2.0
+
 use overclock::core::*;
 
 ////////////////// First ///////////
@@ -18,9 +22,7 @@ where
         while let Some(event) = rt.inbox_mut().next().await {
             log::info!("First received: {}", event);
             if let Some(second_scope_id) = rt.sibling("second").scope_id().await {
-                rt.send(second_scope_id, "Hey second".to_string())
-                    .await
-                    .ok();
+                rt.send(second_scope_id, "Hey second".to_string()).await.ok();
             }
         }
         Ok(())
@@ -95,7 +97,6 @@ where
         let first = First;
         // start first
         rt.start(Some("first".into()), first).await?;
-        //
         // - build Second
         let second = Second;
         // start second
@@ -157,8 +158,5 @@ async fn main() {
         .websocket_server(websocket_server_addr, None)
         .await
         .expect("Websocket server to run");
-    runtime
-        .block_on()
-        .await
-        .expect("Runtime to shutdown gracefully");
+    runtime.block_on().await.expect("Runtime to shutdown gracefully");
 }

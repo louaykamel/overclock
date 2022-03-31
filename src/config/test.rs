@@ -1,15 +1,13 @@
+// Copyright 2021 IOTA Stiftung
+// Copyright 2022 Louay Kamel
+// SPDX-License-Identifier: Apache-2.0
+
 use super::{
-    file::{
-        ConfigFileType,
-        FileSystemConfig,
-    },
+    file::{ConfigFileType, FileSystemConfig},
     versioned::*,
     *,
 };
-use serde::{
-    Deserialize,
-    Serialize,
-};
+use serde::{Deserialize, Serialize};
 use std::marker::PhantomData;
 
 impl<CT> CurrentVersion for MyConfig<CT> {

@@ -1,3 +1,7 @@
+// Copyright 2021 IOTA Stiftung
+// Copyright 2022 Louay Kamel
+// SPDX-License-Identifier: Apache-2.0
+
 pub use actor::*;
 pub use channel::*;
 pub use futures::stream::StreamExt;

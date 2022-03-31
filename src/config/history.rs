@@ -1,30 +1,18 @@
+// Copyright 2021 IOTA Stiftung
+// Copyright 2022 Louay Kamel
+// SPDX-License-Identifier: Apache-2.0
+
 use super::{
     file::*,
     persist::*,
-    versioned::{
-        VersionedConfig,
-        VersionedValue,
-    },
+    versioned::{VersionedConfig, VersionedValue},
     *,
 };
 use crate::core::{
-    AbortableUnboundedChannel,
-    Actor,
-    ActorError,
-    ActorResult,
-    Event,
-    NullSupervisor,
-    Resource,
-    Rt,
-    StreamExt,
+    AbortableUnboundedChannel, Actor, ActorError, ActorResult, Event, NullSupervisor, Resource, Rt, StreamExt,
     SupHandle,
 };
-use serde::{
-    de::DeserializeOwned,
-    Deserialize,
-    Deserializer,
-    Serialize,
-};
+use serde::{de::DeserializeOwned, Deserialize, Deserializer, Serialize};
 
 /// A historical record
 #[derive(Serialize, Deserialize, PartialEq, Default, Debug)]
@@ -102,7 +90,7 @@ where
     C: FileSystemConfig,
 {
     fn persist(&self) -> anyhow::Result<()> {
-        debug!("inside historical config", );
+        debug!("inside historical config",);
         let dir = Self::dir();
         debug!("Persisting historical config to {}", dir.to_string_lossy());
         if !dir.exists() {
@@ -207,7 +195,9 @@ where
         self.records.iter()
     }
 }
-impl<C:  LoadableConfig + Config + SerializableConfig + Persist + FileSystemConfig + DeserializeOwned> History<HistoricalConfig<C>> {
+impl<C: LoadableConfig + Config + SerializableConfig + Persist + FileSystemConfig + DeserializeOwned>
+    History<HistoricalConfig<C>>
+{
     /// Load the historical config from the file system
     pub fn load<M: Into<Option<usize>>>(max_records: M) -> anyhow::Result<Self> {
         let mut history = max_records

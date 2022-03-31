@@ -1,3 +1,7 @@
+// Copyright 2021 IOTA Stiftung
+// Copyright 2022 Louay Kamel
+// SPDX-License-Identifier: Apache-2.0
+
 use super::{Actor, ScopeId};
 use ptree::TreeItem;
 use serde::{Deserialize, Serialize};
@@ -210,21 +214,14 @@ impl Service {
 impl TreeItem for Service {
     type Child = Service;
 
-    fn write_self<W: std::io::Write>(
-        &self,
-        f: &mut W,
-        _style: &ptree::Style,
-    ) -> std::io::Result<()> {
+    fn write_self<W: std::io::Write>(&self, f: &mut W, _style: &ptree::Style) -> std::io::Result<()> {
         write!(
             f,
             "actor: {}, dir: {:?}, status: {}, uptime: {}",
             self.actor_type_name,
             self.directory,
             self.status,
-            self.up_since
-                .elapsed()
-                .expect("Expected elapsed to unwrap")
-                .as_millis()
+            self.up_since.elapsed().expect("Expected elapsed to unwrap").as_millis()
         )
     }
 
@@ -259,13 +256,7 @@ pub trait SupHandle<T: Send>: 'static + Send + Sized + Sync {
         Self: SupHandle<T>;
     /// Report End of life for a T actor
     /// return Some(()) if the report success
-    async fn eol(
-        self,
-        scope_id: super::ScopeId,
-        service: Service,
-        actor: T,
-        r: super::ActorResult<()>,
-    ) -> Option<()>
+    async fn eol(self, scope_id: super::ScopeId, service: Service, actor: T, r: super::ActorResult<()>) -> Option<()>
     where
         T: Actor<Self>;
 }
@@ -275,10 +266,5 @@ pub trait ServiceEvent<T>: Send + 'static {
     /// Creates report event that will be pushed as status change from the Child: T
     fn report_event(scope: super::ScopeId, service: Service) -> Self;
     /// Creates eol event that will be pushed as end of life event once the Child: T breakdown
-    fn eol_event(
-        scope: super::ScopeId,
-        service: Service,
-        actor: T,
-        r: super::ActorResult<()>,
-    ) -> Self;
+    fn eol_event(scope: super::ScopeId, service: Service, actor: T, r: super::ActorResult<()>) -> Self;
 }

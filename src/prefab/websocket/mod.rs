@@ -1,3 +1,7 @@
+// Copyright 2021 IOTA Stiftung
+// Copyright 2022 Louay Kamel
+// SPDX-License-Identifier: Apache-2.0
+
 /// Websocket listener
 mod websocket_listener;
 /// WebSocket receiver (incomings from client)
@@ -8,10 +12,7 @@ mod websocket_sender;
 use tokio_tungstenite::tungstenite::Message;
 pub(crate) use websocket_listener::WebsocketListener;
 pub(crate) use websocket_receiver::WebsocketReceiver;
-pub(crate) use websocket_sender::{
-    WebsocketSender,
-    WebsocketSenderEvent,
-};
+pub(crate) use websocket_sender::{WebsocketSender, WebsocketSenderEvent};
 
 #[derive(serde::Deserialize, serde::Serialize, Clone, Debug)]
 /// The route message, wrapper around Message::Text inner string
