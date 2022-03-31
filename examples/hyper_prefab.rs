@@ -1,5 +1,5 @@
-// Copyright 2021 IOTA Stiftung
 // Copyright 2022 Louay Kamel
+// Copyright 2021 IOTA Stiftung
 // SPDX-License-Identifier: Apache-2.0
 
 //// Based on hyper hello example https://github.com/hyperium/hyper/blob/master/examples/hello.rs
