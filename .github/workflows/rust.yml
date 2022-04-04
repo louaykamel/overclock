@@ -29,7 +29,7 @@ jobs:
           toolchain: nightly
           override: true
           components: rustfmt
-    - uses: actions-rs/cargo@v3
+    - uses: actions-rs/cargo@v1
       with:
         command: fmt
         args: --all -- --check
@@ -48,12 +48,12 @@ jobs:
         toolchain: ${{ matrix.rust }}
         override: true
     - name: Cache cargo registry
-      uses: actions/cache@v3
+      uses: actions/cache@v1
       with:
         path: ~/.cargo/registry
         key: ${{ matrix.os }}-${{ matrix.rust }}-cargo-registry-${{ hashFiles('**/Cargo.toml') }}
     - name: Cache cargo target
-      uses: actions/cache@v3
+      uses: actions/cache@v1
       with:
         path: target
         key: ${{ matrix.os }}-${{ matrix.rust }}-cargo-build-target-${{ hashFiles('**/Cargo.toml') }}
