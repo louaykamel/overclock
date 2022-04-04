@@ -11,14 +11,54 @@ env:
 
 jobs:
   build:
-
     runs-on: ubuntu-latest
 
     steps:
     - uses: actions/checkout@v3
     - name: Build
       run: cargo build --verbose
-    - name: Format
-      run: cargo +nightly fmt
     - name: Run tests
       run: cargo test --verbose
+  format:
+    runs-on: ubuntu-latest
+    steps:
+    - uses: actions/checkout@v3
+    - uses: actions-rs/toolchain@v3
+      with:
+          profile: minimal
+          toolchain: nightly
+          override: true
+          components: rustfmt
+    - uses: actions-rs/cargo@v3
+      with:
+        command: fmt
+        args: --all -- --check
+  test:
+    runs-on: ${{ matrix.os }}
+    strategy:
+      matrix:
+        os: [ubuntu-latest]
+        rust: [nightly, beta, stable]
+    steps:
+    - uses: actions/checkout@main
+
+    - name: Install ${{ matrix.rust }}
+      uses: actions-rs/toolchain@v3
+      with:
+        toolchain: ${{ matrix.rust }}
+        override: true
+    - name: Cache cargo registry
+      uses: actions/cache@v3
+      with:
+        path: ~/.cargo/registry
+        key: ${{ matrix.os }}-${{ matrix.rust }}-cargo-registry-${{ hashFiles('**/Cargo.toml') }}
+    - name: Cache cargo target
+      uses: actions/cache@v3
+      with:
+        path: target
+        key: ${{ matrix.os }}-${{ matrix.rust }}-cargo-build-target-${{ hashFiles('**/Cargo.toml') }}
+    - name: Tests
+      uses: actions-rs/cargo@v1
+      with:
+        command: test
+        args: --all --release
