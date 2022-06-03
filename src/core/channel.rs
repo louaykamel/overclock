@@ -1568,6 +1568,184 @@ impl<T: Shutdown + Clone, B: Send + Sync + 'static> Shutdown for Marker<T, B> {
     }
 }
 
+#[cfg(feature = "tonic")]
+mod tonic_channels {
+    use super::*;
+    pub use tonic;
+    use tonic::{Status, Streaming};
+
+    /// BiStreaming channel using tonic grpc lib
+    pub struct UnboundedBiStreamingChannel<O, T> {
+        out_handle: UnboundedSender<Result<O, Status>>,
+        in_stream: Streaming<T>,
+    }
+    impl<O, T> UnboundedBiStreamingChannel<O, T> {
+        /// Create new channel from grpc streaming
+        pub fn new(out_handle: UnboundedSender<Result<O, Status>>, in_stream: Streaming<T>) -> Self {
+            Self { out_handle, in_stream }
+        }
+    }
+    impl<O: Send + 'static + Clone, T> Channel for UnboundedBiStreamingChannel<O, T> {
+        type Event = ();
+        type Handle = UnboundedBiStreamingHandle<O>;
+        type Inbox = BiStreamingInbox<T>;
+        type Metric = prometheus::IntGauge;
+        fn channel<TT>(
+            self,
+            scope_id: ScopeId,
+        ) -> (
+            Self::Handle,
+            Self::Inbox,
+            AbortRegistration,
+            Option<prometheus::IntGauge>,
+            Option<Box<dyn Route<()>>>,
+        ) {
+            let (abort_handle, abort_registration) = AbortHandle::new_pair();
+            let out_handle = self.out_handle;
+            let streaming = self.in_stream;
+            (
+                UnboundedBiStreamingHandle::new(abort_handle, scope_id, out_handle),
+                BiStreamingInbox::new(streaming),
+                abort_registration,
+                None,
+                None,
+            )
+        }
+    }
+
+    #[derive(Clone)]
+    /// Grpc bi streaming channel's handle
+    pub struct UnboundedBiStreamingHandle<O> {
+        abort_handle: AbortHandle,
+        scope_id: ScopeId,
+        out_handle: UnboundedSender<Result<O, Status>>,
+    }
+
+    impl<O: Send + 'static> UnboundedBiStreamingHandle<O> {
+        /// Create new Bi Streaming channel's handle
+        pub fn new(
+            abort_handle: AbortHandle,
+            scope_id: ScopeId,
+            out_handle: UnboundedSender<Result<O, Status>>,
+        ) -> Self {
+            Self {
+                abort_handle,
+                scope_id,
+                out_handle,
+            }
+        }
+        /// Return the out handle
+        pub fn out_handle(&self) -> &UnboundedSender<Result<O, Status>> {
+            &self.out_handle
+        }
+    }
+
+    #[async_trait::async_trait]
+    impl<O: Send + 'static + Clone> Shutdown for UnboundedBiStreamingHandle<O> {
+        async fn shutdown(&self) {
+            self.abort_handle.abort();
+            self.out_handle.send(Err(Status::aborted("remote shutdown"))).ok();
+        }
+        fn scope_id(&self) -> ScopeId {
+            self.scope_id
+        }
+    }
+
+    /// BiStreaming channel using tonic grpc lib
+    pub struct BoundedBiStreamingChannel<O, T> {
+        out_handle: Sender<Result<O, Status>>,
+        in_stream: Streaming<T>,
+    }
+    impl<O, T> BoundedBiStreamingChannel<O, T> {
+        /// Create new channel from grpc streaming
+        pub fn new(out_handle: Sender<Result<O, Status>>, in_stream: Streaming<T>) -> Self {
+            Self { out_handle, in_stream }
+        }
+    }
+    impl<O: Send + 'static + Clone, T> Channel for BoundedBiStreamingChannel<O, T> {
+        type Event = ();
+        type Handle = BoundedBiStreamingHandle<O>;
+        type Inbox = BiStreamingInbox<T>;
+        type Metric = prometheus::IntGauge;
+        fn channel<TT>(
+            self,
+            scope_id: ScopeId,
+        ) -> (
+            Self::Handle,
+            Self::Inbox,
+            AbortRegistration,
+            Option<prometheus::IntGauge>,
+            Option<Box<dyn Route<()>>>,
+        ) {
+            let (abort_handle, abort_registration) = AbortHandle::new_pair();
+            let out_handle = self.out_handle;
+            let streaming = self.in_stream;
+            (
+                BoundedBiStreamingHandle::new(abort_handle, scope_id, out_handle),
+                BiStreamingInbox::new(streaming),
+                abort_registration,
+                None,
+                None,
+            )
+        }
+    }
+
+    #[derive(Clone)]
+    /// Grpc bi streaming channel's handle
+    pub struct BoundedBiStreamingHandle<O> {
+        abort_handle: AbortHandle,
+        scope_id: ScopeId,
+        out_handle: Sender<Result<O, Status>>,
+    }
+
+    impl<O: Send + 'static> BoundedBiStreamingHandle<O> {
+        /// Create new Bi Streaming channel's handle
+        pub fn new(abort_handle: AbortHandle, scope_id: ScopeId, out_handle: Sender<Result<O, Status>>) -> Self {
+            Self {
+                abort_handle,
+                scope_id,
+                out_handle,
+            }
+        }
+        /// Return the out handle
+        pub fn out_handle(&self) -> &Sender<Result<O, Status>> {
+            &self.out_handle
+        }
+    }
+
+    #[async_trait::async_trait]
+    impl<O: Send + 'static + Clone> Shutdown for BoundedBiStreamingHandle<O> {
+        async fn shutdown(&self) {
+            self.abort_handle.abort();
+            self.out_handle.send(Err(Status::aborted("remote shutdown"))).await.ok();
+        }
+        fn scope_id(&self) -> ScopeId {
+            self.scope_id
+        }
+    }
+
+    /// Grpc bi streaming channel's inbox
+    pub struct BiStreamingInbox<T> {
+        streaming: tonic::Streaming<T>,
+    }
+
+    unsafe impl<T> Sync for BiStreamingInbox<T> {}
+
+    impl<T> BiStreamingInbox<T> {
+        /// Create new Bi Streaming channel's handle
+        pub fn new(streaming: tonic::Streaming<T>) -> Self {
+            Self { streaming }
+        }
+        /// Returns mut ref to the the inner grpc streaming
+        pub fn in_stream(&mut self) -> &mut tonic::Streaming<T> {
+            &mut self.streaming
+        }
+    }
+}
+
+#[cfg(feature = "tonic")]
+pub use self::tonic_channels::*;
+
 #[cfg(feature = "rocket")]
 mod rocket_channels {
     use super::*;

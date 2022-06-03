@@ -1,6 +1,6 @@
 [package]
 name = "overclock"
-version = "0.1.0"
+version = "0.1.1"
 authors = ["Louay Kamel"]
 edition = "2021"
 license-file = "LICENSE"
@@ -40,6 +40,7 @@ toml = { version = "0.5", optional = true }
 glob = { version = "0.3", optional = true }
 rocket = { version = "0.5.0-rc.1", optional = true }
 paho-mqtt = { version = "0.10", default-features = false, features = ["bundled"], optional = true }
+tonic = { version = "0.7", default-features = false, optional = true }
 
 [dev-dependencies]
 env_logger = "0.9"
