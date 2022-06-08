@@ -1568,11 +1568,144 @@ impl<T: Shutdown + Clone, B: Send + Sync + 'static> Shutdown for Marker<T, B> {
     }
 }
 
-#[cfg(feature = "tonic")]
+#[cfg(feature = "tonicserver")]
 mod tonic_channels {
     use super::*;
+    use ::hyper::server::accept::Accept;
     pub use tonic;
-    use tonic::{Status, Streaming};
+    use tonic::{
+        transport::server::{NamedService, Server},
+        Status, Streaming,
+    };
+    use tower::Service;
+    ///////////// Tonic server ///////////////////
+    /// Tonic channel wrapper
+    pub struct TonicChannel<S> {
+        server: Server,
+        service: S,
+        incoming: ::hyper::server::conn::AddrIncoming,
+    }
+
+    impl<S> TonicChannel<S> {
+        /// Create new Tonic channel
+        pub fn new(server: Server, service: S, incoming: ::hyper::server::conn::AddrIncoming) -> Self {
+            Self {
+                server,
+                incoming,
+                service,
+            }
+        }
+    }
+
+    impl<S: Send + Sync, B> Channel for TonicChannel<S>
+    where
+        S: Service<hyper::Request<hyper::Body>, Response = hyper::Response<B>> + NamedService,
+        S::Future: Send,
+    {
+        type Event = ();
+        type Handle = TonicHandle;
+        type Inbox = TonicInbox<S>;
+        type Metric = prometheus::IntGauge;
+        fn channel<T>(
+            self,
+            scope_id: ScopeId,
+        ) -> (
+            Self::Handle,
+            Self::Inbox,
+            AbortRegistration,
+            Option<prometheus::IntGauge>,
+            Option<Box<dyn Route<()>>>,
+        ) {
+            let (abort_handle, abort_registration) = AbortHandle::new_pair();
+            let tonic_handle = TonicHandle::new(abort_handle, scope_id);
+            let tonic_inbox = TonicInbox::new(self.server, self.service, self.incoming, abort_registration.clone());
+            (tonic_handle, tonic_inbox, abort_registration, None, None)
+        }
+    }
+
+    #[derive(Clone)]
+    /// Tonic channel's handle
+    pub struct TonicHandle {
+        abort_handle: AbortHandle,
+        scope_id: ScopeId,
+    }
+
+    impl TonicHandle {
+        /// Create new Tonic channel's handle
+        pub fn new(abort_handle: AbortHandle, scope_id: ScopeId) -> Self {
+            Self { abort_handle, scope_id }
+        }
+    }
+
+    #[async_trait::async_trait]
+    impl Shutdown for TonicHandle {
+        async fn shutdown(&self) {
+            self.abort_handle.abort();
+        }
+        fn scope_id(&self) -> ScopeId {
+            self.scope_id
+        }
+    }
+    struct TcpIncoming(::hyper::server::conn::AddrIncoming);
+    impl tokio_stream::Stream for TcpIncoming {
+        type Item = Result<::hyper::server::conn::AddrStream, std::io::Error>;
+
+        fn poll_next(mut self: Pin<&mut Self>, cx: &mut Context<'_>) -> Poll<Option<Self::Item>> {
+            Pin::new(&mut self.0).poll_accept(cx)
+        }
+    }
+    /// Tonic channel's inbox, used to serve tonic server inside the actor run loop
+    pub struct TonicInbox<S> {
+        server: Option<Server>,
+        service: Option<S>,
+        incoming: Option<::hyper::server::conn::AddrIncoming>,
+        abort_registration: AbortRegistration,
+    }
+    impl<S: Send + 'static + Clone> TonicInbox<S>
+    where
+        S: Service<
+                hyper::Request<hyper::Body>,
+                Response = hyper::Response<tonic::body::BoxBody>,
+                Error = std::convert::Infallible,
+            > + NamedService,
+        S::Future: Send,
+    {
+        /// Ignite tonic server
+        pub async fn ignite(&mut self) -> Result<(), ::tonic::transport::Error> {
+            if let Some(incoming) = self.incoming.take() {
+                let incoming = TcpIncoming(incoming);
+                let f = futures::future::pending::<()>();
+                let abortable = Abortable::new(f, self.abort_registration.clone());
+                if let Some(mut server) = self.server.take() {
+                    server
+                        .add_optional_service(self.service.take())
+                        .serve_with_incoming_shutdown(incoming, async {
+                            abortable.await.ok();
+                        })
+                        .await?;
+                }
+            }
+            Ok(())
+        }
+    }
+    impl<S> TonicInbox<S> {
+        /// Create new tonic inbox
+        pub fn new(
+            server: Server,
+            service: S,
+            incoming: ::hyper::server::conn::AddrIncoming,
+            abort_registration: AbortRegistration,
+        ) -> Self {
+            Self {
+                server: Some(server),
+                service: Some(service),
+                incoming: Some(incoming),
+                abort_registration,
+            }
+        }
+    }
+
+    /////////////// Tonic server end //////////////////
 
     /// BiStreaming channel using tonic grpc lib
     pub struct UnboundedBiStreamingChannel<O, T> {
@@ -1743,7 +1876,7 @@ mod tonic_channels {
     }
 }
 
-#[cfg(feature = "tonic")]
+#[cfg(feature = "tonicserver")]
 pub use self::tonic_channels::*;
 
 #[cfg(feature = "rocket")]

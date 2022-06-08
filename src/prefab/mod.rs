@@ -15,3 +15,7 @@ pub mod websocket;
 #[cfg(feature = "rocket")]
 /// The rocket webserver
 pub mod rocket;
+
+#[cfg(feature = "tonicserver")]
+/// Tonic, provides Tonic channel and prefab functionality
+pub mod tonic;
