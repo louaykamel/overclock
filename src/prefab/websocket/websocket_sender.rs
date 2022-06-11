@@ -74,20 +74,31 @@ where
                     }
                 },
                 WebsocketSenderEvent::Subscribe(actor_path, resource_scope_id, resource_ref) => {
-                    if let Err(e) = rt
+                    match rt
                         .subscribe::<JsonMessage>(resource_scope_id, resource_ref.clone().into())
                         .await
                     {
-                        let json = serde_json::to_string(&Error::Subscribe(actor_path, resource_ref, format!("{}", e)))
-                            .expect("Serializable response");
-                        let message = Message::from(json);
-                        self.split_sink.send(message).await.ok();
-                    } else {
-                        let json = serde_json::to_string(&Response::Subscribed(resource_ref.into()))
-                            .expect("Serializable response");
-                        let message = Message::from(json);
-                        self.split_sink.send(message).await.ok();
-                    };
+                        Err(e) => {
+                            let json =
+                                serde_json::to_string(&Error::Subscribe(actor_path, resource_ref, format!("{}", e)))
+                                    .expect("Serializable response");
+                            let message = Message::from(json);
+                            self.split_sink.send(message).await.ok();
+                        }
+                        Ok(mut o) => {
+                            let json = serde_json::to_string(&Response::Subscribed(resource_ref.clone().into()))
+                                .expect("Serializable response");
+                            let message = Message::from(json);
+                            self.split_sink.send(message).await.ok();
+                            if let Some(ring) = o.take() {
+                                let json_event = JsonEvent::Published(resource_scope_id, resource_ref.0, ring);
+                                let json = serde_json::to_string(&Response::JsonEvent(json_event))
+                                    .expect("Serializable response");
+                                let message = Message::from(json);
+                                self.split_sink.send(message).await.ok();
+                            }
+                        }
+                    }
                 }
             }
         }

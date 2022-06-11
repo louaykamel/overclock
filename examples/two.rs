@@ -56,17 +56,49 @@ where
 // The root custom actor, equivalent to a launcher;
 struct Overclock;
 
-#[supervise]
 enum OverclockEvent {
     Shutdown,
     Report(ScopeId, Service),
     Exit(ScopeId, Service, OverclockChild),
 }
 
-#[children]
 enum OverclockChild {
     First(First),
     Second(Second),
+}
+
+impl ShutdownEvent for OverclockEvent {
+    fn shutdown_event() -> Self {
+        Self::Shutdown
+    }
+}
+
+impl ServiceEvent<First> for OverclockEvent {
+    fn report_event(scope: overclock::core::ScopeId, service: Service) -> Self {
+        Self::Report(scope, service)
+    }
+    fn eol_event(
+        scope: overclock::core::ScopeId,
+        service: Service,
+        first: First,
+        _r: overclock::core::ActorResult<()>,
+    ) -> Self {
+        Self::Exit(scope, service, OverclockChild::First(first))
+    }
+}
+
+impl ServiceEvent<Second> for OverclockEvent {
+    fn report_event(scope: overclock::core::ScopeId, service: Service) -> Self {
+        Self::Report(scope, service)
+    }
+    fn eol_event(
+        scope: overclock::core::ScopeId,
+        service: Service,
+        second: Second,
+        _r: overclock::core::ActorResult<()>,
+    ) -> Self {
+        Self::Exit(scope, service, OverclockChild::Second(second))
+    }
 }
 
 // ### Impl using #[children] proc macro ### //
