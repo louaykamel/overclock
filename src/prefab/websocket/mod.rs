@@ -44,6 +44,8 @@ pub enum Event {
     Call(JsonMessage),
     /// Request the service tree
     RequestServiceTree,
+    /// Subscribe using a resource ref
+    Subscribe(JsonMessage),
 }
 
 impl Event {
@@ -61,7 +63,7 @@ impl Event {
     }
 }
 // Serializable response
-#[derive(serde::Serialize, Debug, Clone)]
+#[derive(serde::Serialize, serde::Deserialize, Debug, Clone)]
 /// The expected client's response for a given event request
 pub enum Response {
     /// Success shutdown signal
@@ -71,9 +73,32 @@ pub enum Response {
     /// Successful Response from a call
     Response(JsonMessage),
     /// Requested service tree
-    ServiceTree(Service),
+    ServiceTree(JsonMessage),
+    /// Successful subscribe request
+    Subscribed(JsonMessage),
+    /// Json event for a subscribed jsonmessage type
+    JsonEvent(JsonEvent),
 }
 
+/// Pushed Json event for a dynamic resources
+#[derive(serde::Deserialize, serde::Serialize, Clone, Debug)]
+pub enum JsonEvent {
+    /// Scope under the ScopeId, it published the Resource T under given resource reference (string)
+    Published(ScopeId, ResourceRef, JsonMessage),
+    /// Pushed when the resource is dropped
+    Dropped(ScopeId, ResourceRef),
+}
+
+impl From<crate::core::Event<JsonMessage>> for JsonEvent {
+    fn from(v: crate::core::Event<JsonMessage>) -> Self {
+        match v {
+            crate::core::Event::Published(scope_id, res_ref, actual_message) => {
+                Self::Published(scope_id, res_ref, actual_message)
+            }
+            crate::core::Event::Dropped(scope_id, res_ref) => Self::Dropped(scope_id, res_ref),
+        }
+    }
+}
 #[derive(serde::Serialize, serde::Deserialize, Debug, Clone)]
 /// The expected client's error for a given event request
 pub enum Error {
@@ -86,6 +111,8 @@ pub enum Error {
     Call(ActorPath, JsonMessage, String),
     /// Unable to fetch the service
     ServiceTree(String),
+    /// Unable to subscribe
+    Subscribe(ActorPath, JsonMessage, String),
 }
 
 /// Wrapper around the final expected result

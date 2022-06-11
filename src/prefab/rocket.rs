@@ -50,7 +50,7 @@ impl<S: SupHandle<Self>> Actor<S> for RocketServer {
     async fn run(&mut self, rt: &mut Rt<Self, S>, name: Self::Data) -> ActorResult<()> {
         if let Some(rocket) = rt.inbox_mut().rocket() {
             log::info!("{} is {}", name, rt.service().status());
-            rocket.launch().await.map_err(|e| {
+            let _ = rocket.launch().await.map_err(|e| {
                 log::error!("{}: {}", name, e);
                 ActorError::exit(e)
             })?;

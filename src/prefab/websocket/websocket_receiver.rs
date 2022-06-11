@@ -80,12 +80,24 @@ where
                             Event::RequestServiceTree => {
                                 if let Some(scope_id) = targeted_scope_id_opt.take() {
                                     if let Some(service) = rt.lookup::<Service>(scope_id).await {
-                                        let r = Response::ServiceTree(service);
+                                        let serivice_json =
+                                            serde_json::to_string(&service).expect("Serializable service");
+                                        let r = Response::ServiceTree(serivice_json.into());
                                         self.sender_handle.send(WebsocketSenderEvent::Result(Ok(r))).ok();
                                     } else {
                                         let r = Error::ServiceTree("Service not available".into());
                                         self.sender_handle.send(WebsocketSenderEvent::Result(Err(r))).ok();
                                     };
+                                } else {
+                                    let r = Error::ServiceTree("Unreachable ActorPath".into());
+                                    self.sender_handle.send(WebsocketSenderEvent::Result(Err(r))).ok();
+                                }
+                            }
+                            Event::Subscribe(message) => {
+                                if let Some(scope_id) = targeted_scope_id_opt.take() {
+                                    self.sender_handle
+                                        .send(WebsocketSenderEvent::Subscribe(interface.actor_path, scope_id, message))
+                                        .ok();
                                 } else {
                                     let r = Error::ServiceTree("Unreachable ActorPath".into());
                                     self.sender_handle.send(WebsocketSenderEvent::Result(Err(r))).ok();

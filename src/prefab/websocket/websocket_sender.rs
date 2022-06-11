@@ -25,10 +25,18 @@ where
 pub enum WebsocketSenderEvent {
     Shutdown,
     Result(ResponseResult),
+    Subscribe(ActorPath, ScopeId, JsonMessage),
+    Event(Event<JsonMessage>),
 }
 impl ShutdownEvent for WebsocketSenderEvent {
     fn shutdown_event() -> Self {
         Self::Shutdown
+    }
+}
+
+impl From<Event<JsonMessage>> for WebsocketSenderEvent {
+    fn from(event: crate::core::Event<super::JsonMessage>) -> Self {
+        Self::Event(event)
     }
 }
 
@@ -47,6 +55,12 @@ where
         while let Some(event) = rt.inbox_mut().next().await {
             match event {
                 WebsocketSenderEvent::Shutdown => break,
+                WebsocketSenderEvent::Event(event) => {
+                    let json_event: JsonEvent = event.into();
+                    let json = serde_json::to_string(&json_event).expect("Serializable json event");
+                    let message = Message::from(json);
+                    self.split_sink.send(message).await.ok();
+                }
                 WebsocketSenderEvent::Result(r) => match r {
                     Ok(response) => {
                         let json = serde_json::to_string(&response).expect("Serializable response");
@@ -59,6 +73,22 @@ where
                         self.split_sink.send(message).await.ok();
                     }
                 },
+                WebsocketSenderEvent::Subscribe(actor_path, resource_scope_id, resource_ref) => {
+                    if let Err(e) = rt
+                        .subscribe::<JsonMessage>(resource_scope_id, resource_ref.clone().into())
+                        .await
+                    {
+                        let json = serde_json::to_string(&Error::Subscribe(actor_path, resource_ref, format!("{}", e)))
+                            .expect("Serializable response");
+                        let message = Message::from(json);
+                        self.split_sink.send(message).await.ok();
+                    } else {
+                        let json = serde_json::to_string(&Response::Subscribed(resource_ref.into()))
+                            .expect("Serializable response");
+                        let message = Message::from(json);
+                        self.split_sink.send(message).await.ok();
+                    };
+                }
             }
         }
         Ok(())
