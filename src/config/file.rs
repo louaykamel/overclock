@@ -97,6 +97,7 @@ pub trait FileSystemConfig {
         OpenOptions::new()
             .create(true)
             .write(true)
+            .truncate(true)
             .open(Self::dir().join(format!("{}.{}", Self::FILENAME, Self::ConfigType::extension())))
             .map_err(|e| anyhow!(e))
     }

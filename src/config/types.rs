@@ -62,7 +62,8 @@ impl ConfigFileType for TOMLConfig {
 
     fn serialize<C: Serialize, W: Write>(config: &C, writer: &mut W) -> anyhow::Result<()> {
         let s = toml::to_string_pretty(config).map_err(|e| anyhow!(e))?;
-        writer.write_all(s.as_bytes()).map_err(|e| anyhow!(e))
+        writer.write_all(s.as_bytes()).map_err(|e| anyhow!(e))?;
+        writer.flush().map_err(|e| anyhow!(e))
     }
 
     fn deserialize<C: DeserializeOwned, R: Read>(reader: &mut R) -> anyhow::Result<C> {
