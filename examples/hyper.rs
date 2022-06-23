@@ -68,6 +68,7 @@ impl<T> hyper::service::Service<T> for MakeSvc {
         Box::pin(fut)
     }
 }
+
 ///////////////// Forked from hyper example END //////
 
 /// Our hyper example STARTS from here
@@ -87,15 +88,14 @@ impl Hyper {
 impl ChannelBuilder<HyperChannel<MakeSvc>> for Hyper {
     async fn build_channel(&mut self) -> ActorResult<HyperChannel<MakeSvc>> {
         let make_svc = MakeSvc { counter: 81818 };
-        let server = hyper::Server::try_bind(&self.addr)
-            .map_err(|e| {
-                log::error!("{}", e);
-                ActorError::exit_msg(e)
-            })?
-            .serve(make_svc);
-        Ok(HyperChannel::new(server))
+        let server = hyper::Server::try_bind(&self.addr).map_err(|e| {
+            log::error!("{}", e);
+            ActorError::exit_msg(e)
+        })?;
+        Ok(HyperChannel::new(server, make_svc))
     }
 }
+
 #[async_trait::async_trait]
 impl<S> Actor<S> for Hyper
 where

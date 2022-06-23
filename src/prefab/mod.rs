@@ -19,3 +19,7 @@ pub mod rocket;
 #[cfg(feature = "tonicserver")]
 /// Tonic, provides Tonic channel and prefab functionality
 pub mod tonic;
+
+/// Axum, provides Axum channel and prefab functionality
+#[cfg(feature = "axumserver")]
+pub mod axum;

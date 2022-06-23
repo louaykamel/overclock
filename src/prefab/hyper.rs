@@ -22,8 +22,11 @@ impl<T> Hyper<T> {
 }
 
 #[async_trait::async_trait]
-impl<T, E, F, R> ChannelBuilder<HyperChannel<T>> for Hyper<T>
+impl<T, E, F, R, B> ChannelBuilder<HyperChannel<T>> for Hyper<T>
 where
+    B: http_body::Body + Send + 'static,
+    B::Data: Send,
+    B::Error: Send + Sync + std::error::Error,
     for<'a> T: Send
         + Sync
         + 'static
@@ -31,19 +34,17 @@ where
         + Send,
     E: std::error::Error + Send + Sync + 'static,
     F: Send + std::future::Future<Output = Result<R, E>> + 'static,
-    R: Send + hyper::service::Service<hyper::Request<hyper::Body>, Response = hyper::Response<hyper::Body>> + 'static,
+    R: Send + hyper::service::Service<hyper::Request<hyper::Body>, Response = hyper::Response<B>> + 'static,
     R::Error: std::error::Error + Send + Sync,
     R::Future: Send,
 {
     async fn build_channel(&mut self) -> ActorResult<HyperChannel<T>> {
         if let Some(make_svc) = self.make_svc.take() {
-            let server = hyper::Server::try_bind(&self.addr)
-                .map_err(|e| {
-                    log::error!("{}", e);
-                    ActorError::exit_msg(e)
-                })?
-                .serve(make_svc);
-            Ok(HyperChannel::new(server))
+            let server = hyper::Server::try_bind(&self.addr).map_err(|e| {
+                log::error!("{}", e);
+                ActorError::exit_msg(e)
+            })?;
+            Ok(HyperChannel::new(server, make_svc))
         } else {
             log::error!("No provided make svc to serve");
             return Err(ActorError::exit_msg("No provided make svc to serve"));
@@ -52,8 +53,11 @@ where
 }
 
 #[async_trait::async_trait]
-impl<T, E, F, R, S> Actor<S> for Hyper<T>
+impl<T, E, F, R, S, B> Actor<S> for Hyper<T>
 where
+    B: http_body::Body + Send + 'static,
+    B::Data: Send,
+    B::Error: Send + Sync + std::error::Error,
     S: SupHandle<Self>,
     for<'a> T: Send
         + Sync
@@ -62,7 +66,7 @@ where
         + Send,
     E: std::error::Error + Send + Sync + 'static,
     F: Send + std::future::Future<Output = Result<R, E>> + 'static,
-    R: Send + hyper::service::Service<hyper::Request<hyper::Body>, Response = hyper::Response<hyper::Body>> + 'static,
+    R: Send + hyper::service::Service<hyper::Request<hyper::Body>, Response = hyper::Response<B>> + 'static,
     R::Error: std::error::Error + Send + Sync,
     R::Future: Send,
 {

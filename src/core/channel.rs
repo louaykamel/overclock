@@ -1180,30 +1180,37 @@ mod hyper_channels {
     pub use ::hyper;
     /// Hyper channel wrapper
     pub struct HyperChannel<S> {
-        server: ::hyper::Server<::hyper::server::conn::AddrIncoming, S>,
+        server: ::hyper::server::Builder<::hyper::server::conn::AddrIncoming>,
+        service: S,
     }
 
     impl<S: Send> HyperChannel<S> {
         /// Create new hyper channel
-        pub fn new(server: ::hyper::Server<::hyper::server::conn::AddrIncoming, S>) -> Self {
-            Self { server }
+        pub fn new(server: ::hyper::server::Builder<::hyper::server::conn::AddrIncoming>, service: S) -> Self {
+            Self { server, service }
         }
     }
 
-    use ::hyper::{server::conn::AddrStream, Body, Request, Response};
-    impl<S, E, R, F> Channel for HyperChannel<S>
+    use ::hyper::{
+        server::conn::{AddrIncoming, AddrStream},
+        Body, Request, Response,
+    };
+    impl<S, E, R, F, B> Channel for HyperChannel<S>
     where
+        B: http_body::Body + Send + 'static,
+        B::Data: Send,
+        B::Error: Send + Sync + std::error::Error,
         for<'a> S: ::hyper::service::Service<&'a AddrStream, Error = E, Response = R, Future = F> + Send,
         E: std::error::Error + Send + Sync + 'static,
         S: Send + 'static + Sync,
         F: Send + std::future::Future<Output = Result<R, E>> + 'static,
-        R: Send + ::hyper::service::Service<Request<Body>, Response = Response<Body>> + 'static,
+        R: Send + ::hyper::service::Service<Request<Body>, Response = Response<B>> + 'static,
         R::Error: std::error::Error + Send + Sync,
         R::Future: Send,
     {
         type Event = ();
         type Handle = HyperHandle;
-        type Inbox = HyperInbox;
+        type Inbox = HyperInbox<S>;
         type Metric = prometheus::IntGauge;
         fn channel<T>(
             self,
@@ -1216,13 +1223,8 @@ mod hyper_channels {
             Option<Box<dyn Route<()>>>,
         ) {
             let (abort_handle, abort_registration) = AbortHandle::new_pair();
-            let f = futures::future::pending::<()>();
-            let abortable = Abortable::new(f, abort_registration.clone());
-            let graceful = self.server.with_graceful_shutdown(async {
-                abortable.await.ok();
-            });
             let hyper_handle = HyperHandle::new(abort_handle, scope_id);
-            let hyper_inbox = HyperInbox::new(Box::pin(graceful));
+            let hyper_inbox = HyperInbox::new(self.server, self.service, abort_registration.clone());
             (hyper_handle, hyper_inbox, abort_registration, None, None)
         }
     }
@@ -1250,32 +1252,51 @@ mod hyper_channels {
             self.scope_id
         }
     }
-
+    unsafe impl<S> Sync for HyperInbox<S> {}
     /// Hyper channel's inbox, used to ignite hyper server inside the actor run loop
-    pub struct HyperInbox {
-        pined_graceful: Option<
-            Pin<Box<dyn futures::Future<Output = Result<(), ::hyper::Error>> + std::marker::Send + Sync + 'static>>,
-        >,
+    pub struct HyperInbox<S> {
+        builder: Option<hyper::server::Builder<AddrIncoming>>,
+        service: Option<S>,
+        abort_registration: AbortRegistration,
     }
-    impl HyperInbox {
-        /// Ignite hyper server
-        pub async fn ignite(&mut self) -> Result<(), ::hyper::Error> {
-            if let Some(server) = self.pined_graceful.take() {
-                server.await?
-            }
-            Ok(())
-        }
-    }
-    impl HyperInbox {
-        /// Create new hyper inbox
+    impl<S, E, R, F, B> HyperInbox<S>
+    where
+        B: http_body::Body + Send + 'static,
+        B::Data: Send,
+        B::Error: Send + Sync + std::error::Error,
+        for<'a> S: ::hyper::service::Service<&'a AddrStream, Error = E, Response = R, Future = F> + Send,
+        E: std::error::Error + Send + Sync + 'static,
+        S: Send + 'static + Sync,
+        F: Send + std::future::Future<Output = Result<R, E>> + 'static,
+        R: Send + ::hyper::service::Service<Request<Body>, Response = Response<B>> + 'static,
+        R::Error: std::error::Error + Send + Sync,
+        R::Future: Send,
+    {
+        ///
         pub fn new(
-            pined_graceful: Pin<
-                Box<dyn futures::Future<Output = Result<(), ::hyper::Error>> + std::marker::Send + Sync + 'static>,
-            >,
+            builder: hyper::server::Builder<AddrIncoming>,
+            service: S,
+            abort_registration: AbortRegistration,
         ) -> Self {
             Self {
-                pined_graceful: Some(pined_graceful),
+                builder: Some(builder),
+                service: Some(service),
+                abort_registration,
             }
+        }
+        /// Ignite hyper server
+        pub async fn ignite(&mut self) -> Result<(), ::hyper::Error> {
+            if let (Some(server), Some(service)) = (self.builder.take(), self.service.take()) {
+                let f = futures::future::pending::<()>();
+                let abortable = Abortable::new(f, self.abort_registration.clone());
+                server
+                    .serve(service)
+                    .with_graceful_shutdown(async {
+                        abortable.await.ok();
+                    })
+                    .await?;
+            }
+            Ok(())
         }
     }
 }
@@ -2056,3 +2077,119 @@ mod paho_mqtt_channels {
 
 #[cfg(feature = "paho-mqtt")]
 pub use self::paho_mqtt_channels::*;
+
+#[cfg(feature = "axumserver")]
+mod axum_channels {
+    use super::*;
+    use ::hyper::server::accept::Accept;
+
+    ///////////// Axum server ///////////////////
+    /// Axum channel wrapper
+    pub struct AxumChannel {
+        router: axum::Router,
+        builder: hyper::server::Builder<::hyper::server::conn::AddrIncoming>,
+    }
+
+    impl AxumChannel {
+        /// Create new Tonic channel
+        pub fn new(router: axum::Router, builder: hyper::server::Builder<::hyper::server::conn::AddrIncoming>) -> Self {
+            Self { router, builder }
+        }
+    }
+
+    unsafe impl Sync for AxumInbox {}
+
+    impl Channel for AxumChannel {
+        type Event = ();
+        type Handle = AxumHandle;
+        type Inbox = AxumInbox;
+        type Metric = prometheus::IntGauge;
+        fn channel<T>(
+            self,
+            scope_id: ScopeId,
+        ) -> (
+            Self::Handle,
+            Self::Inbox,
+            AbortRegistration,
+            Option<prometheus::IntGauge>,
+            Option<Box<dyn Route<()>>>,
+        ) {
+            let (abort_handle, abort_registration) = AbortHandle::new_pair();
+            let tonic_handle = AxumHandle::new(abort_handle, scope_id);
+            let tonic_inbox = AxumInbox::new(self.router, self.builder, abort_registration.clone());
+            (tonic_handle, tonic_inbox, abort_registration, None, None)
+        }
+    }
+
+    #[derive(Clone)]
+    /// Axum channel's handle
+    pub struct AxumHandle {
+        abort_handle: AbortHandle,
+        scope_id: ScopeId,
+    }
+
+    impl AxumHandle {
+        /// Create new Axum channel's handle
+        pub fn new(abort_handle: AbortHandle, scope_id: ScopeId) -> Self {
+            Self { abort_handle, scope_id }
+        }
+    }
+
+    #[async_trait::async_trait]
+    impl Shutdown for AxumHandle {
+        async fn shutdown(&self) {
+            self.abort_handle.abort();
+        }
+        fn scope_id(&self) -> ScopeId {
+            self.scope_id
+        }
+    }
+    struct TcpIncoming(::hyper::server::conn::AddrIncoming);
+    impl tokio_stream::Stream for TcpIncoming {
+        type Item = Result<::hyper::server::conn::AddrStream, std::io::Error>;
+
+        fn poll_next(mut self: Pin<&mut Self>, cx: &mut Context<'_>) -> Poll<Option<Self::Item>> {
+            Pin::new(&mut self.0).poll_accept(cx)
+        }
+    }
+    /// Axum channel's inbox, used to serve Axum server inside the actor run loop
+    pub struct AxumInbox {
+        router: Option<axum::Router>,
+        builder: Option<hyper::server::Builder<::hyper::server::conn::AddrIncoming>>,
+        abort_registration: AbortRegistration,
+    }
+    impl AxumInbox {
+        /// Ignite Axum server
+        pub async fn ignite(&mut self) -> Result<(), ::hyper::Error> {
+            if let Some(builder) = self.builder.take() {
+                let f = futures::future::pending::<()>();
+                let abortable = Abortable::new(f, self.abort_registration.clone());
+                if let Some(server) = self.router.take() {
+                    builder
+                        .serve(server.into_make_service())
+                        .with_graceful_shutdown(async {
+                            abortable.await.ok();
+                        })
+                        .await?;
+                }
+            }
+            Ok(())
+        }
+    }
+    impl AxumInbox {
+        /// Create new Axum inbox
+        pub fn new(
+            router: axum::Router,
+            builder: hyper::server::Builder<hyper::server::conn::AddrIncoming>,
+            abort_registration: AbortRegistration,
+        ) -> Self {
+            Self {
+                router: Some(router),
+                builder: Some(builder),
+                abort_registration,
+            }
+        }
+    }
+}
+#[cfg(feature = "axum")]
+pub use axum_channels::*;

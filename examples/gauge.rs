@@ -21,6 +21,7 @@ where
             rt.scope_id(),
             rt.service().actor_type_name(),
             rt.service().status(),
+
         );
         let gauge: prometheus::IntGauge =
             prometheus::core::GenericGauge::new("magnitude", "Decrementer and Incrementer gauge resource").unwrap();
