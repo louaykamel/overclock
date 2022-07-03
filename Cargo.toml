@@ -1,6 +1,6 @@
 [package]
 name = "overclock"
-version = "0.1.8"
+version = "0.1.9"
 authors = ["Louay Kamel"]
 edition = "2021"
 license-file = "LICENSE"
@@ -59,7 +59,7 @@ tungstenite = ["tokio/net", "tokio-tungstenite"]
 websocket_server = ["tungstenite", "prefabs"]
 console = ["tracing-subscriber", "console-subscriber", "tokio/tracing"]
 prefabs = []
-backserver = ["hyper", "hyper-tungstenite", "prefabs", "tungstenite"]
+backserver = ["hyperserver", "hyper-tungstenite", "prefabs", "tungstenite"]
 config = [ "glob" ]
 ron_config = [ "config", "ron" ]
 json_config = [ "config" ]
