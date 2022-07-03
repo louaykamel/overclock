@@ -1174,7 +1174,7 @@ impl Channel for TcpListenerStream {
     }
 }
 
-#[cfg(feature = "hyper")]
+#[cfg(feature = "hyperserver")]
 mod hyper_channels {
     use super::*;
     pub use ::hyper;
@@ -1301,7 +1301,7 @@ mod hyper_channels {
     }
 }
 
-#[cfg(feature = "hyper")]
+#[cfg(feature = "hyperserver")]
 pub use hyper_channels::*;
 
 #[cfg(feature = "tungstenite")]
