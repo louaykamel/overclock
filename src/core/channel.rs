@@ -2085,24 +2085,37 @@ mod axum_channels {
 
     ///////////// Axum server ///////////////////
     /// Axum channel wrapper
-    pub struct AxumChannel {
+    pub struct AxumChannel<T = std::net::SocketAddr>
+    where
+        T: for<'a> axum::extract::connect_info::Connected<&'a ::hyper::server::conn::AddrStream>,
+    {
         router: axum::Router,
         builder: hyper::server::Builder<::hyper::server::conn::AddrIncoming>,
+        _marker: std::marker::PhantomData<fn() -> T>,
     }
 
-    impl AxumChannel {
+    impl<T: for<'a> axum::extract::connect_info::Connected<&'a ::hyper::server::conn::AddrStream>> AxumChannel<T> {
         /// Create new Tonic channel
         pub fn new(router: axum::Router, builder: hyper::server::Builder<::hyper::server::conn::AddrIncoming>) -> Self {
-            Self { router, builder }
+            Self {
+                router,
+                builder,
+                _marker: std::marker::PhantomData,
+            }
         }
     }
 
-    unsafe impl Sync for AxumInbox {}
+    unsafe impl<T: for<'a> axum::extract::connect_info::Connected<&'a ::hyper::server::conn::AddrStream>> Sync
+        for AxumInbox<T>
+    {
+    }
 
-    impl Channel for AxumChannel {
+    impl<C: for<'a> axum::extract::connect_info::Connected<&'a ::hyper::server::conn::AddrStream>> Channel
+        for AxumChannel<C>
+    {
         type Event = ();
         type Handle = AxumHandle;
-        type Inbox = AxumInbox;
+        type Inbox = AxumInbox<C>;
         type Metric = prometheus::IntGauge;
         fn channel<T>(
             self,
@@ -2153,12 +2166,13 @@ mod axum_channels {
         }
     }
     /// Axum channel's inbox, used to serve Axum server inside the actor run loop
-    pub struct AxumInbox {
+    pub struct AxumInbox<T: for<'a> axum::extract::connect_info::Connected<&'a ::hyper::server::conn::AddrStream>> {
         router: Option<axum::Router>,
         builder: Option<hyper::server::Builder<::hyper::server::conn::AddrIncoming>>,
         abort_registration: AbortRegistration,
+        _marker: std::marker::PhantomData<fn() -> T>,
     }
-    impl AxumInbox {
+    impl<T: for<'a> axum::extract::connect_info::Connected<&'a ::hyper::server::conn::AddrStream>> AxumInbox<T> {
         /// Ignite Axum server
         pub async fn ignite(&mut self) -> Result<(), ::hyper::Error> {
             if let Some(builder) = self.builder.take() {
@@ -2166,7 +2180,7 @@ mod axum_channels {
                 let abortable = Abortable::new(f, self.abort_registration.clone());
                 if let Some(server) = self.router.take() {
                     builder
-                        .serve(server.into_make_service())
+                        .serve(server.into_make_service_with_connect_info::<T>())
                         .with_graceful_shutdown(async {
                             abortable.await.ok();
                         })
@@ -2176,7 +2190,7 @@ mod axum_channels {
             Ok(())
         }
     }
-    impl AxumInbox {
+    impl<T: for<'a> axum::extract::connect_info::Connected<&'a ::hyper::server::conn::AddrStream>> AxumInbox<T> {
         /// Create new Axum inbox
         pub fn new(
             router: axum::Router,
@@ -2187,6 +2201,7 @@ mod axum_channels {
                 router: Some(router),
                 builder: Some(builder),
                 abort_registration,
+                _marker: std::marker::PhantomData,
             }
         }
     }

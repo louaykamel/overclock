@@ -5,24 +5,26 @@
 use crate::core::*;
 
 /// Tonic prefab actor struct
-pub struct Axum {
+pub struct Axum<T = std::net::SocketAddr> {
     addr: std::net::SocketAddr,
     router: Option<axum::Router>,
+    _marker: std::marker::PhantomData<fn() -> T>,
 }
 
-impl Axum {
+impl<T> Axum<T> {
     /// Create new tonic server
     pub fn new(addr: std::net::SocketAddr, router: axum::Router) -> Self {
         Self {
             addr,
             router: Some(router),
+            _marker: std::marker::PhantomData,
         }
     }
 }
 
 #[async_trait::async_trait]
-impl ChannelBuilder<AxumChannel> for Axum {
-    async fn build_channel(&mut self) -> ActorResult<AxumChannel> {
+impl<T: for<'a> axum::extract::connect_info::Connected<&'a ::hyper::server::conn::AddrStream>> ChannelBuilder<AxumChannel<T>> for Axum<T>  {
+    async fn build_channel(&mut self) -> ActorResult<AxumChannel<T>> {
         if let Some(router) = self.router.take() {
             let builder = hyper::Server::try_bind(&self.addr).map_err(|e| {
                 log::error!("{}", e);
@@ -37,9 +39,9 @@ impl ChannelBuilder<AxumChannel> for Axum {
 }
 
 #[async_trait::async_trait]
-impl<S: SupHandle<Self>> Actor<S> for Axum {
+impl<T: for<'a> axum::extract::connect_info::Connected<&'a ::hyper::server::conn::AddrStream>, S: SupHandle<Self>> Actor<S> for Axum<T> {
     type Data = String;
-    type Channel = AxumChannel;
+    type Channel = AxumChannel<T>;
     async fn init(&mut self, rt: &mut Rt<Self, S>) -> ActorResult<Self::Data> {
         let name: String = rt.service().directory().clone().unwrap_or_else(|| "tonic".into());
         log::info!("{}: {}", name, rt.service().status());

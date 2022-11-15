@@ -693,7 +693,7 @@ impl<A: Actor<S>, S: SupHandle<A>> Rt<A, S> {
     }
     /// Unregister all the metrics
     pub(crate) fn unregister_metrics(&mut self) -> prometheus::Result<()> {
-        for m in self.registered_metrics.pop() {
+        for m in self.registered_metrics.drain(..) {
             super::registry::PROMETHEUS_REGISTRY.unregister(m)?
         }
         Ok(())
@@ -838,7 +838,7 @@ impl<A: Actor<S>, S: SupHandle<A>> Rt<A, S> {
             }
             data.subscribers = active_subscribers;
             drop(lock);
-            for shutdown_handle in should_get_shutdown.pop() {
+            for shutdown_handle in should_get_shutdown {
                 shutdown_handle.shutdown().await;
             }
             // publish the resource to other scopes
@@ -906,7 +906,7 @@ impl<A: Actor<S>, S: SupHandle<A>> Rt<A, S> {
             let dropped = Event::Dropped(self.scope_id, res_ref);
             route.send_msg(dropped).await.ok();
         }
-        for shutdown_handle in should_get_shutdown.drain(..) {
+        for shutdown_handle in should_get_shutdown {
             shutdown_handle.shutdown().await;
         }
 

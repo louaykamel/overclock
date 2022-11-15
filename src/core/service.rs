@@ -68,14 +68,17 @@ pub struct Service {
     /// The status of the actor
     pub status: ServiceStatus,
     /// The directory name of the actor, must be unique within the same spawned level
+    #[serde(skip_serializing_if = "Option::is_none")]
     pub directory: Option<String>,
     /// The start timestamp, used to calculate uptime
     pub up_since: SystemTime,
     /// Accumulated downtime
     pub downtime_ms: u64,
     /// Microservices
+    #[serde(skip_serializing_if = "std::collections::HashMap::is_empty")]
     pub microservices: std::collections::HashMap<ScopeId, Self>,
     /// Highlight any stopped service in microservices;
+    #[serde(skip_serializing_if = "std::collections::HashMap::is_empty")]
     pub inactive: std::collections::HashMap<String, ScopeId>,
 }
 /// The microservices scopes ids iterator
