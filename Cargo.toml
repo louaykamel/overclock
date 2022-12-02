@@ -1,6 +1,6 @@
 [package]
 name = "overclock"
-version = "0.1.11"
+version = "0.1.12"
 authors = ["Louay Kamel"]
 edition = "2021"
 license-file = "LICENSE"
@@ -31,7 +31,7 @@ prometheus = "0.13.0"
 dyn-clone = "1.0.4"
 
 hyper = { version = "0.14", features = ["full"], optional = true }
-tokio-tungstenite = { version = "0.18", optional = true }
+tokio-tungstenite = { version = "0.17", optional = true }
 hyper-tungstenite = { version = "0.8", optional = true }
 tracing-subscriber = { version = "0.3", optional = true }
 console-subscriber = {version = "0.1.3", optional = true }
