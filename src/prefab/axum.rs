@@ -23,7 +23,9 @@ impl<T> Axum<T> {
 }
 
 #[async_trait::async_trait]
-impl<T: for<'a> axum::extract::connect_info::Connected<&'a ::hyper::server::conn::AddrStream>> ChannelBuilder<AxumChannel<T>> for Axum<T>  {
+impl<T: for<'a> axum::extract::connect_info::Connected<&'a ::hyper::server::conn::AddrStream>>
+    ChannelBuilder<AxumChannel<T>> for Axum<T>
+{
     async fn build_channel(&mut self) -> ActorResult<AxumChannel<T>> {
         if let Some(router) = self.router.take() {
             let builder = hyper::Server::try_bind(&self.addr).map_err(|e| {
@@ -39,7 +41,9 @@ impl<T: for<'a> axum::extract::connect_info::Connected<&'a ::hyper::server::conn
 }
 
 #[async_trait::async_trait]
-impl<T: for<'a> axum::extract::connect_info::Connected<&'a ::hyper::server::conn::AddrStream>, S: SupHandle<Self>> Actor<S> for Axum<T> {
+impl<T: for<'a> axum::extract::connect_info::Connected<&'a ::hyper::server::conn::AddrStream>, S: SupHandle<Self>>
+    Actor<S> for Axum<T>
+{
     type Data = String;
     type Channel = AxumChannel<T>;
     async fn init(&mut self, rt: &mut Rt<Self, S>) -> ActorResult<Self::Data> {
