@@ -149,7 +149,7 @@ pub trait CleanupSelf: Send + Sync {
     async fn cleanup_self(
         self: Box<Self>,
         publisher_scope_id: ScopeId,
-        data_and_subscribers: &mut anymap::Map<dyn anymap::any::Any + Send + Sync>,
+        data_and_subscribers: &mut anymap::Map<dyn core::any::Any + Send + Sync>,
     );
 }
 /// Cleanup self data struct
@@ -169,7 +169,7 @@ impl<T: Resource> CleanupSelf for CleanupData<T> {
     async fn cleanup_self(
         self: Box<Self>,
         publisher_scope_id: ScopeId,
-        data_and_subscribers: &mut anymap::Map<dyn anymap::any::Any + Send + Sync>,
+        data_and_subscribers: &mut anymap::Map<dyn std::any::Any + Send + Sync>,
     ) {
         if let Some(mut data) = data_and_subscribers.remove::<Data<T>>() {
             for (_sub_scope_id, subscriber) in data.subscribers.drain() {
@@ -207,11 +207,11 @@ pub struct Scope {
     // to cleanup self created data from the data_and_subscribers anymap
     pub(crate) cleanup_data: HashMap<TypeId, Box<dyn CleanupSelf>>,
     /// The create data along with their subscribers
-    pub(crate) data_and_subscribers: anymap::Map<dyn anymap::any::Any + Send + Sync>,
+    pub(crate) data_and_subscribers: anymap::Map<dyn core::any::Any + Send + Sync>,
     /// Active directories of the children
     pub(crate) active_directories: HashMap<String, ScopeId>,
     /// Supported dynamic routes by the actor (scope's owner)
-    pub(crate) router: anymap::Map<dyn anymap::any::Any + Send + Sync>,
+    pub(crate) router: anymap::Map<dyn core::any::Any + Send + Sync>,
 }
 
 impl Scope {
